@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Clothing Generator (Google Imagen)</title>
+
+    <style>
+        body {
+            background: black;
+            font-family: Inter, system-ui;
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+        }
+
+        h1 {
+            background: linear-gradient(90deg, #a76bff, #4de1ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 48px;
+            margin-bottom: 5px;
+        }
+
+        .input-box {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        input, select {
+            padding: 16px;
+            border-radius: 12px;
+            border: 2px solid #a76bff;
+            background: #111;
+            color: white;
+            font-size: 18px;
+            flex-grow: 1;
+            min-width: 120px;
+        }
+        
+        select, input[type="number"] {
+            flex-grow: 0;
+            width: 100px; /* Фиксированная ширина для размера и количества */
+        }
+
+        button {
+            margin-top: 30px;
+            padding: 16px 32px;
+            font-size: 22px;
+            border-radius: 20px;
+            background: #ff009d;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        button:hover:not(:disabled) { opacity: 0.8; }
+        button:disabled { background: #555; cursor: not-allowed; }
+
+        .loader {
+            margin-top: 40px;
+            font-size: 20px;
+            color: #aaa;
+        }
+
+        img {
+            margin-top: 25px;
+            border-radius: 16px;
+            width: 380px;
+            border: 2px solid #55ff55;
+            max-width: 90%;
+            height: auto;
+        }
+
+        .wa-btn {
+            margin-top: 30px;
+            background: #1dd858;
+            padding: 18px 40px;
+            color: black;
+            font-weight: bold;
+            border-radius: 16px;
+            font-size: 22px;
+            display: inline-block;
+            text-decoration: none;
+            transition: opacity 0.3s;
+        }
+        .wa-btn:hover { opacity: 0.8; }
+        
+        .error-box {
+            margin-top: 25px;
+            padding: 20px;
+            background-color: #550000;
+            border: 2px solid #ff5555;
+            border-radius: 16px;
+            max-width: 450px;
+            margin: 25px auto 0;
+            color: white;
+            text-align: left;
+        }
+        .error-box h2 {
+            margin-top: 0;
+        }
+    </style>
+
+</head>
+<body>
+
+<h1>No One Else Has This</h1>
+<p>Describe your dream clothing — China makes it real</p>
+
+<form id="generator-form">
+    <div class="input-box">
+        <input name="prompt" id="prompt-input" required placeholder="e.g. sky blue pixel camo hoodie" />
+        <select name="size" id="size-select">
+            <option>S</option><option>M</option><option>L</option><option>XL</option>
+        </select>
+        <input name="qty" id="qty-input" type="number" min="1" value="1" />
+    </div>
+
+    <button type="submit" id="generate-button">Generate Design</button>
+</form>
+
+<div id="status-area"></div>
+<div id="result-area"></div>
+<div id="wa-link-area"></div>
+
+<script>
+    // Настройки Google Imagen API
+    const MODEL_NAME = "imagen-4.0-generate-001";
+    const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:predict`;
+
+    const form = document.getElementById('generator-form');
+    const statusArea = document.getElementById('status-area');
+    const resultArea = document.getElementById('result-area');
+    const waLinkArea = document.getElementById('wa-link-area');
+    const generateButton = document.getElementById('generate-button');
+    const promptInput = document.getElementById('prompt-input');
+
+    // ВНИМАНИЕ: apiKey остается пустой строкой, так как он предоставляется средой Canvas автоматически.
+    const apiKey = ""; 
+    
+    // Функция для создания ссылки WhatsApp
+    function createWaLink(prompt, size, qty) {
+        const text = `ORDER:\n\n${prompt}\nSize: ${size}\nQty: ${qty}`;
+        const encodedText = encodeURIComponent(text);
+        return `https://wa.me/8613980632981?text=${encodedText}`;
+    }
+
+    // Функция для отображения ошибки
+    function displayError(message) {
+        resultArea.innerHTML = '';
+        waLinkArea.innerHTML = '';
+        statusArea.innerHTML = `
+            <div class="error-box">
+                <h2>❌ Ошибка Генерации Изображения</h2>
+                <p>Произошла ошибка при обращении к API генерации изображений.</p>
+                <p>Детали: <strong>${message}</strong></p>
+                <p>Попробуйте изменить запрос или повторить попытку.</p>
+            </div>
+        `;
+    }
+    
+    // Основная логика генерации изображения с экспоненциальным отсрочкой (для стабильности)
+    async function generateImage(prompt) {
+        const MAX_RETRIES = 3;
+        const apiUrl = `${API_ENDPOINT}?key=${apiKey}`;
+
+        // Подготовка полезной нагрузки для API Imagen
+        const payload = { 
+            instances: [{ prompt: prompt }], 
+            parameters: { "sampleCount": 1 } 
+        };
+
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+
+                // Успех: проверяем, есть ли Base64 данные изображения
+                if (response.ok && result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                    // Возвращаем Base64 строку изображения
+                    return result.predictions[0].bytesBase64Encoded; 
+                }
+                
+                // Обработка ошибок API
+                const errorMessage = result.error?.message || `API Error: ${response.status} ${response.statusText}`;
+
+                if (attempt < MAX_RETRIES && (response.status === 503 || response.status === 429)) {
+                    // 503 Service Unavailable или 429 Too Many Requests: пробуем снова
+                    statusArea.innerHTML = `<div class="loader">⏳ Generating... Service busy. Retrying in ${waitTime / 1000} seconds (Attempt ${attempt}/${MAX_RETRIES}).</div>`;
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    continue; 
+                }
+
+                // Критическая ошибка (400, 403, 404, или последняя попытка)
+                throw new Error(errorMessage);
+
+            } catch (error) {
+                // Если попытки закончились, или это невосстановимая ошибка (например, ошибка сети)
+                if (attempt === MAX_RETRIES || !error.message.includes("Service busy")) {
+                     throw error;
+                }
+            }
+        }
+        
+        return null; // Should not be reached
+    }
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const prompt = promptInput.value;
+        const size = document.getElementById('size-select').value;
+        const qty = document.getElementById('qty-input').value;
+
+        // 1. Установка состояния загрузки
+        generateButton.disabled = true;
+        generateButton.textContent = "⏳ Generating...";
+        resultArea.innerHTML = '';
+        waLinkArea.innerHTML = '';
+        statusArea.innerHTML = '<div class="loader">⏳ Generating your unique clothing design via Google Imagen…</div>';
+
+        // 2. Генерация изображения
+        let base64Data = null;
+        try {
+            base64Data = await generateImage(prompt);
+        } catch (error) {
+            displayError(error.message);
+        }
+
+        // 3. Снятие состояния загрузки
+        generateButton.disabled = false;
+        generateButton.textContent = "Generate Design";
+        statusArea.innerHTML = '';
+
+        if (base64Data) {
+            // Создание URL из Base64 данных
+            const imageUrl = `data:image/png;base64,${base64Data}`;
+            
+            // Отображение изображения
+            resultArea.innerHTML = `<img src="${imageUrl}" alt="AI Generated Clothing Design">`;
+
+            // Отображение ссылки WhatsApp
+            const waLink = createWaLink(prompt, size, qty);
+            waLinkArea.innerHTML = `<a class="wa-btn" href="${waLink}" target="_blank">Produce in China — $32–48</a>`;
+        }
+    });
+
+</script>
+
+</body>
+</html>
