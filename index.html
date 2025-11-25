@@ -1,160 +1,140 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>No One Else Has This</title>
-  <style>
-    body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
-    h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-    input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-    input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
-    .result {margin:60px auto;max-width:600px;}
-    img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
-    button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
-    .produce {background:#25d366;color:white;font-weight:bold;}
-    .note {font-size:0.9em;color:#aaa;margin-top:8px;}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>No One Else Has This</title>
+    <style>
+        body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
+        h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
+        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
+        .result {margin:60px auto;max-width:600px; display: none;} 
+        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
+        button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
+        .produce {background:#25d366;color:white;font-weight:bold;}
+        
+        /* Лоадер */
+        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
+        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
+    </style>
 </head>
 <body>
-  <h1>No One Else Has This</h1>
-  <p>Describe your dream clothing — China makes it real</p>
 
-  <div style="max-width:700px;margin:0 auto;text-align:left;">
-    <form id="genForm">
-      <input type="text" name="prompt" id="prompt" placeholder="Describe your dream clothing..." required>
-      <select name="size" id="size">
-        <option>XS</option>
-        <option>S</option>
-        <option selected>M</option>
-        <option>L</option>
-        <option>XL</option>
-        <option>XXL</option>
-      </select>
-      <input type="text" name="qty" id="qty" placeholder="Quantity" value="1">
-      <input type="submit" value="Generate">
+    <h1>No One Else Has This</h1>
+    <p>Describe your dream clothing — China makes it real</p>
+
+    <form id="appForm">
+        <input type="text" id="prompt" name="prompt" placeholder="Describe your dream clothing..." required>
+        <select id="size" name="size">
+            <option>XS</option>
+            <option>S</option>
+            <option selected>M</option>
+            <option>L</option>
+            <option>XL</option>
+            <option>XXL</option>
+        </select>
+        <input type="text" id="qty" name="qty" placeholder="Quantity" value="1">
+        <input type="submit" id="submitBtn" value="Generate">
     </form>
-    <p class="note">Image generation uses Pollinations AI. Upload to ImgBB is optional — insert your key below.</p>
-  </div>
+    
+    <div class="loader" id="loader"></div>
 
-  <div id="output" class="result"></div>
+    <div class="result" id="resultBlock">
+        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
+        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
+    </div>
 
-<script>
-/* ---------- Настройки (замените если нужно) ---------- */
-const FACTORY_WHATSAPP = "+8615808103712";
-const YOUR_REFERRAL_CODE = "REF_GROK2025";
-/* Вставьте сюда ваш ImgBB API key для автоматической загрузки.
-   Если оставите пустым (""), изображение не будет загружено на ImgBB,
-   но всё равно отобразится локально как data:image/png;base64,... */
-const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5"; // <-- вставьте ваш ключ сюда (пример: "10b08c5b..." )
+    <script>
+        const FACTORY_WHATSAPP = "8613980632981"; 
+        const YOUR_REFERRAL_CODE = "REF_GROK2025";
+        
+        // Ключ ImgBB
+        const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
-/* ---------- Вспомогательные функции ---------- */
-function makeWhatsAppLink(prompt, imgUrl, size, qty) {
-  const message = `Hello MMS Clothing!
+        document.getElementById('appForm').addEventListener('submit', function(e) {
+            e.preventDefault(); 
+            
+            const promptVal = document.getElementById('prompt').value;
+            const sizeVal = document.getElementById('size').value;
+            const qtyVal = document.getElementById('qty').value;
+            const imgElement = document.getElementById('resultImg');
+            const resultDiv = document.getElementById('resultBlock');
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('submitBtn');
+
+            // UI Loading state
+            btn.value = "Dreaming...";
+            btn.disabled = true;
+            loader.style.display = "block";
+            resultDiv.style.display = "none";
+
+            // Генерация ссылки Pollinations
+            // Добавляем seed, чтобы избежать кеширования и ошибок "старой" картинки
+            const seed = Math.floor(Math.random() * 1000000);
+            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
+            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?model=flux&width=1024&height=1024&seed=${seed}`;
+
+            console.log("Loading URL:", pollUrl); // Для отладки
+
+            // Устанавливаем ссылку на картинку
+            imgElement.src = pollUrl;
+
+            // Если картинка загрузилась успешно
+            imgElement.onload = async function() {
+                loader.style.display = "none";
+                resultDiv.style.display = "block";
+                btn.value = "Generate";
+                btn.disabled = false;
+
+                // Сначала готовим финальную ссылку как ссылку генератора (резервный вариант)
+                let finalLink = pollUrl;
+
+                // Пытаемся загрузить на ImgBB (в фоне)
+                // Если не выйдет - используем ссылку pollUrl, она тоже работает
+                try {
+                    const formData = new FormData();
+                    formData.append("image", pollUrl);
+                    
+                    // fetch запрос к ImgBB
+                    const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const response = await upload.json();
+                    
+                    if(response.success) {
+                        finalLink = response.data.url;
+                    }
+                } catch (err) {
+                    console.log("ImgBB fail, keeping original link");
+                }
+
+                // Формируем ссылку WhatsApp
+                const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
-Referral: ${Fation AI AAP} → 25% cashback
+Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
 Design:
-${imgUrl}
-Description: ${prompt}
-Size: ${size} | Quantity: ${qty} pc(s)
+${finalLink}
+Description: ${promptVal}
+Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
-  const phone = FACTORY_WHATSAPP.replace('+','');
-  return `https://api.whatsapp.com/send?phone=${encodeURIComponent(phone)}&text=${encodeURIComponent(message)}`;
-}
 
-function blobToBase64(blob) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onerror = () => rej(new Error("FileReader error"));
-    r.onload = () => {
-      // r.result is "data:...;base64,AAAA..."
-      const parts = r.result.split(',');
-      res(parts[1]); // return raw base64
-    };
-    r.readAsDataURL(blob);
-  });
-}
+                const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+                
+                // Вешаем на кнопку
+                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
+            };
 
-/* ---------- Pollinations: получить изображение (blob) ---------- */
-async function generateImageBase64(prompt) {
-  const encoded = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`);
-  const url = `https://image.pollinations.ai/prompt/${encoded}?model=flux&width=1024&height=1024`;
-  const resp = await fetch(url, { method: 'GET' });
-  if (!resp.ok) throw new Error(`Image generation failed: ${resp.status}`);
-  const blob = await resp.blob();
-  return await blobToBase64(blob);
-}
-
-/* ---------- Upload to ImgBB (optional) ---------- */
-async function uploadToImgBB(base64Image) {
-  if (!IMGBB_KEY || IMGBB_KEY.trim() === "") throw new Error("No IMGBB_KEY provided");
-  const form = new FormData();
-  form.append("key", IMGBB_KEY);
-  form.append("image", base64Image);
-  const resp = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: form });
-  if (!resp.ok) {
-    const txt = await resp.text();
-    throw new Error("ImgBB upload failed: " + resp.status + " " + txt.slice(0,200));
-  }
-  const json = await resp.json();
-  return json.data && json.data.url ? json.data.url : null;
-}
-
-/* ---------- UI и flow ---------- */
-const form = document.getElementById('genForm');
-const output = document.getElementById('output');
-
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  output.innerHTML = '<p>Generating image…</p>';
-  const prompt = document.getElementById('prompt').value.trim();
-  const size = document.getElementById('size').value;
-  const qty = document.getElementById('qty').value || '1';
-  if (!prompt) { alert('Describe your dream clothing...'); return; }
-
-  try {
-    // 1) generate image (base64)
-    const b64 = await generateImageBase64(prompt);
-    const dataUrl = "data:image/png;base64," + b64;
-
-    // show image immediately
-    output.innerHTML = `<img src="${dataUrl}" alt="Generated image" />`;
-
-    // 2) try upload to ImgBB if key provided
-    let imgUrlForMessage = dataUrl; // default embed base64 if upload fails or not provided
-    if (IMGBB_KEY && IMGBB_KEY.trim() !== "") {
-      output.innerHTML += `<p>Uploading to ImgBB…</p>`;
-      try {
-        const uploaded = await uploadToImgBB(b64);
-        if (uploaded) {
-          imgUrlForMessage = uploaded;
-          output.innerHTML = `<img src="${dataUrl}" alt="Generated image" /><p>Uploaded to ImgBB: <a href="${uploaded}" target="_blank" rel="noopener noreferrer">${uploaded}</a></p>`;
-        } else {
-          output.innerHTML = `<img src="${dataUrl}" alt="Generated image" /><p>ImgBB returned no URL — using embedded image for WhatsApp.</p>`;
-        }
-      } catch (uErr) {
-        // don't break flow: keep dataUrl, show warning
-        output.innerHTML = `<img src="${dataUrl}" alt="Generated image" /><p style="color:#ff8080;">ImgBB upload failed: ${uErr.message}</p>`;
-      }
-    } else {
-      output.innerHTML += `<p style="color:#ccc;">No ImgBB key provided — image not uploaded. Using embedded image for WhatsApp.</p>`;
-    }
-
-    // 3) build WhatsApp link same as original
-    const wa = makeWhatsAppLink(prompt, imgUrlForMessage, size, qty);
-    // produce button (same label)
-    const btn = document.createElement('button');
-    btn.className = 'produce';
-    btn.textContent = ' Produce in China — $32–48 ';
-    btn.onclick = () => window.open(wa, '_blank');
-    output.appendChild(btn);
-
-  } catch (err) {
-    console.error(err);
-    output.innerHTML = `<p style="color:#ff8080;">Error: ${err.message}</p><p class="note">If Pollinations fails due to CORS or rate limits, you may need a server proxy or try later.</p>`;
-  }
-});
-</script>
+            // Если картинка НЕ загрузилась (ошибка генерации)
+            imgElement.onerror = function() {
+                loader.style.display = "none";
+                btn.value = "Try Again";
+                btn.disabled = false;
+                alert("Generation failed. Server busy, please click Generate again.");
+            };
+        });
+    </script>
 </body>
 </html>
