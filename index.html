@@ -1,92 +1,166 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>No One Else Has This</title>
-    <style>
-        body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
-        h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-        input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
-        .result {margin:60px auto;max-width:600px; display: none;}
-        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
-        button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
-        .produce {background:#25d366;color:white;font-weight:bold;}
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Clothing Generator</title>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 900px;
+        margin: 20px auto;
+        padding: 20px;
+        background: #f6f6f6;
+        color: #222;
+    }
+    h1 { text-align: center; }
+
+    .card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    input, select, button, textarea {
+        width: 100%;
+        padding: 12px;
+        margin-top: 10px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 16px;
+    }
+
+    button {
+        background: black;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+        border: none;
+    }
+
+    button:hover { opacity: .85; }
+
+    img {
+        width: 100%;
+        border-radius: 12px;
+        margin-top: 20px;
+    }
+
+    .wa-btn {
+        display: block;
+        padding: 16px;
+        background: #25D366;
+        color: white;
+        text-align: center;
+        font-size: 18px;
+        border-radius: 12px;
+        margin-top: 25px;
+        text-decoration: none;
+    }
+</style>
 </head>
 <body>
-    <h1>No One Else Has This</h1>
-    <p>Describe your dream clothing — China makes it real</p>
-    <form id="clothing-form">
-        <input type="text" name="prompt" placeholder="Describe your dream clothing..." required>
-        <select name="size">
-            <option>XS</option>
-            <option>S</option>
-            <option selected>M</option>
-            <option>L</option>
-            <option>XL</option>
-            <option>XXL</option>
-        </select>
-        <input type="text" name="qty" placeholder="Quantity" value="1">
-        <input type="submit" value="Generate">
-    </form>
-    <div id="result" class="result"></div>
 
-    <script>
-        document.getElementById('clothing-form').addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const prompt = document.querySelector('input[name="prompt"]').value.trim();
-            const size = document.querySelector('select[name="size"]').value;
-            const qty = document.querySelector('input[name="qty"]').value || '1';
+<h1>AI Fashion Generator</h1>
 
-            const encoded_prompt = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`);
-            const url = `https://image.pollinations.ai/prompt/${encoded_prompt}?model=turbo&width=1024&height=1024`;
+<div class="card">
+    <label>Prompt:</label>
+    <textarea id="prompt" rows="3" placeholder="Black hoodie with papaton white text..."></textarea>
 
-            try {
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('Image generation failed');
-                const blob = await res.blob();
-                const reader = new FileReader();
-                reader.readAsDataURL(blob);
-                reader.onload = async function() {
-                    const img_src = reader.result;
-                    const img_b64 = img_src.split(',')[1];
+    <label>Size:</label>
+    <select id="size">
+        <option value="S">S</option>
+        <option value="M" selected>M</option>
+        <option value="L">L</option>
+        <option value="XL">XL</option>
+    </select>
 
-                    let img_url = `data:image/png;base64,${img_b64}`;
-                    try {
-                        const formData = new FormData();
-                        formData.append('key', '10b08c5be2b4f6c9a2f1d2e8f7c3e4a5');
-                        formData.append('image', img_b64);
-                        const uploadRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
-                        if (!uploadRes.ok) throw new Error('Upload failed');
-                        const uploadData = await uploadRes.json();
-                        if (uploadData.data && uploadData.data.url) {
-                            img_url = uploadData.data.url;
-                        }
-                    } catch (uploadError) {
-                        console.error('Upload to imgbb failed:', uploadError);
-                    }
+    <label>Quantity:</label>
+    <input id="qty" type="number" min="1" value="1">
 
-                    const FACTORY_WHATSAPP = "+8615808103712";
-                    const YOUR_REFERRAL_CODE = "REF_GROK2025";
-                    const message = `Hello MMS Clothing!\nFully custom clothing — cut & sew\nReferral: ${YOUR_REFERRAL_CODE} → 25% cashback\nDesign:\n${img_url}\nDescription: ${prompt}\nSize: ${size} | Quantity: ${qty} pc(s)\nPlease send quote + sample cost + lead time.\nThank you!`;
-                    const phone = FACTORY_WHATSAPP.replace('+', '');
-                    const encoded_message = encodeURIComponent(message);
-                    const wa_link = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded_message}`;
+    <button onclick="generate()">Generate</button>
+</div>
 
-                    const resultDiv = document.getElementById('result');
-                    resultDiv.innerHTML = `
-                        <img src="${img_src}" alt="Generated Image">
-                        <button class="produce" onclick="window.open('${wa_link}')"> Produce in China — $32–48 </button>
-                    `;
-                    resultDiv.style.display = 'block';
-                };
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
-            }
-        });
-    </script>
+<div id="result"></div>
+
+<script>
+const FACTORY_WHATSAPP = "+8615808103712";
+const REF_CODE = "REF_GROK2025";
+const IMGBB_KEY = "YOUR_IMGBB_KEY"; // ← если хотите автозагрузку
+
+async function pollinations(prompt) {
+    const encoded = encodeURIComponent(
+        `${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`
+    );
+
+    const url = `https://image.pollinations.ai/prompt/${encoded}?model=flux&width=1024&height=1024`;
+
+    const res = await fetch(url);
+    const blob = await res.blob();
+
+    return await toBase64(blob);
+}
+
+function toBase64(blob) {
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(blob);
+    });
+}
+
+async function uploadImgBB(base64) {
+    if (IMGBB_KEY === "YOUR_IMGBB_KEY") return null;
+
+    const form = new FormData();
+    form.append("image", base64);
+
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+        method: "POST",
+        body: form
+    });
+
+    const data = await res.json();
+    return data.data?.url || null;
+}
+
+function makeWhatsApp(prompt, imgUrl, size, qty) {
+    const text = `Order:\n${prompt}\nSize: ${size}\nQty: ${qty}\n\nImage: ${imgUrl}\nReferral: ${REF_CODE}`;
+    return `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(text)}`;
+}
+
+async function generate() {
+    const prompt = document.getElementById("prompt").value.trim();
+    const size = document.getElementById("size").value;
+    const qty = document.getElementById("qty").value;
+
+    if (!prompt) return alert("Введите prompt");
+
+    const result = document.getElementById("result");
+    result.innerHTML = "<p>Generating...</p>";
+
+    try {
+        const base64 = await pollinations(prompt);
+        const localImg = "data:image/png;base64," + base64;
+
+        result.innerHTML = `<img src="${localImg}" />`;
+
+        let uploadedUrl = await uploadImgBB(base64);
+        if (!uploadedUrl) uploadedUrl = "[ImgBB KEY required — image not uploaded]";
+
+        const wa = makeWhatsApp(prompt, uploadedUrl, size, qty);
+
+        result.innerHTML += `<a class="wa-btn" href="${wa}" target="_blank">Send to Factory WhatsApp</a>`;
+
+    } catch (e) {
+        result.innerHTML = "<p>Error generating image</p>";
+        console.error(e);
+    }
+}
+</script>
+
 </body>
 </html>
