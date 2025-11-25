@@ -5,22 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>No One Else Has This</title>
     <style>
+        /* --- СТИЛИ БЕЗ ИЗМЕНЕНИЙ --- */
         body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
-        input[type=submit]:disabled {background:#555;cursor:wait;}
+        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold; transition: 0.3s;}
+        input[type=submit]:disabled {background:#555;cursor:wait;color:#aaa;border:3px solid #555;}
+        input[type=submit]:hover:not(:disabled) {box-shadow: 0 0 15px #ff00aa;}
         
         .result {margin:60px auto;max-width:600px; display: none;} 
         img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
-        .produce {background:#25d366;color:white;font-weight:bold;}
+        .produce {background:#25d366;color:white;font-weight:bold; transition: 0.3s;}
+        .produce:hover {box-shadow: 0 0 20px #25d366;}
         
-        /* Анимация загрузки */
+        /* Лоадер */
         .loader {display:none; border: 5px solid #222; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
         @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
         
-        .error-msg {color: #ff3333; display: none; margin-top: 20px;}
+        /* Блок ошибки */
+        .error-container {display: none; background: #3a0000; border: 2px solid #ff0000; padding: 15px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
+        .error-msg {color: #ff5555; margin: 0; font-weight: bold;}
     </style>
 </head>
 <body>
@@ -43,10 +48,13 @@
     </form>
     
     <div class="loader" id="loader"></div>
-    <p class="error-msg" id="errorMsg">Image generation timed out. Please try again.</p>
+
+    <div class="error-container" id="errorBlock">
+        <p class="error-msg">⚠️ Image generation failed. Please try again.</p>
+    </div>
 
     <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
+        <img id="resultImg" src="" alt="Generated Image">
         <button class="produce" id="waButton"> Produce in China — $32–48 </button>
     </div>
 
@@ -57,45 +65,46 @@
         document.getElementById('appForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
             
-            // Получаем данные
+            // Элементы UI
             const promptVal = document.getElementById('prompt').value;
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
-            
-            // Элементы UI
             const imgElement = document.getElementById('resultImg');
             const resultDiv = document.getElementById('resultBlock');
             const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
-            const errorMsg = document.getElementById('errorMsg');
+            const errorBlock = document.getElementById('errorBlock');
 
-            // Сброс интерфейса
+            // 1. Сброс интерфейса в состояние "Загрузка"
             btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
             resultDiv.style.display = "none";
-            errorMsg.style.display = "none";
+            errorBlock.style.display = "none";
 
-            // 1. Создаем уникальный "Seed", чтобы ссылка была уникальной
-            const seed = Math.floor(Math.random() * 1000000);
+            // 2. Генерация уникального ключа (seed)
+            const seed = Math.floor(Math.random() * 2000000);
             
-            // 2. Формируем ссылку на картинку
-            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
-            // Используем nologo=true и private=true (иногда помогает от кеширования)
-            const imageUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?model=flux&width=1024&height=1024&seed=${seed}&nologo=true`;
+            // 3. Формирование ссылки. ИСПОЛЬЗУЕМ ДРУГОЙ ЭНДПОИНТ (pollinations.ai/p/)
+            // Он работает стабильнее для встраивания на сайты.
+            const basePrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
+            
+            // Новая структура ссылки:
+            const imageUrl = `https://pollinations.ai/p/${basePrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
 
-            // 3. Загружаем картинку
+            // Устанавливаем ссылку для картинки
             imgElement.src = imageUrl;
 
-            // КОГДА картинка загрузилась успешно:
+            // --- Обработчики событий загрузки картинки ---
+
+            // УСПЕХ: Картинка загрузилась
             imgElement.onload = function() {
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
 
-                // Формируем ссылку для WhatsApp
-                // Мы отправляем ту же ссылку (imageUrl). Фабрика откроет её и увидит ТО ЖЕ САМОЕ, так как seed зафиксирован.
+                // Формируем ссылку WhatsApp с ТОЙ ЖЕ ссылкой на картинку
                 const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
@@ -107,14 +116,13 @@ Please send quote + sample cost + lead time.
 Thank you!`;
 
                 const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
-                
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
-            // Если произошла ошибка загрузки
+            // ОШИБКА: Картинка не загрузилась (например, таймаут)
             imgElement.onerror = function() {
                 loader.style.display = "none";
-                errorMsg.style.display = "block";
+                errorBlock.style.display = "block"; // Показываем красную ошибку
                 btn.value = "Try Again";
                 btn.disabled = false;
             };
