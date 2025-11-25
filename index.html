@@ -41,7 +41,7 @@
             const qty = document.querySelector('input[name="qty"]').value || '1';
 
             const encoded_prompt = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`);
-            const url = `https://image.pollinations.ai/prompt/${encoded_prompt}?model=flux&width=1024&height=1024`;
+            const url = `https://image.pollinations.ai/prompt/${encoded_prompt}?model=turbo&width=1024&height=1024`;
 
             try {
                 const res = await fetch(url);
