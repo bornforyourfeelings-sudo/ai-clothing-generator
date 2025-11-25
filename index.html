@@ -1,265 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Clothing Generator (Google Imagen)</title>
-
+    <title>No One Else Has This</title>
     <style>
-        body {
-            background: black;
-            font-family: Inter, system-ui;
-            text-align: center;
-            color: white;
-            margin-top: 40px;
-        }
-
-        h1 {
-            background: linear-gradient(90deg, #a76bff, #4de1ff);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 48px;
-            margin-bottom: 5px;
-        }
-
-        .input-box {
-            max-width: 600px;
-            margin: 20px auto;
-            padding: 20px;
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-
-        input, select {
-            padding: 16px;
-            border-radius: 12px;
-            border: 2px solid #a76bff;
-            background: #111;
-            color: white;
-            font-size: 18px;
-            flex-grow: 1;
-            min-width: 120px;
-        }
-        
-        select, input[type="number"] {
-            flex-grow: 0;
-            width: 100px; /* Фиксированная ширина для размера и количества */
-        }
-
-        button {
-            margin-top: 30px;
-            padding: 16px 32px;
-            font-size: 22px;
-            border-radius: 20px;
-            background: #ff009d;
-            border: none;
-            color: white;
-            cursor: pointer;
-            transition: opacity 0.3s;
-        }
-
-        button:hover:not(:disabled) { opacity: 0.8; }
-        button:disabled { background: #555; cursor: not-allowed; }
-
-        .loader {
-            margin-top: 40px;
-            font-size: 20px;
-            color: #aaa;
-        }
-
-        img {
-            margin-top: 25px;
-            border-radius: 16px;
-            width: 380px;
-            border: 2px solid #55ff55;
-            max-width: 90%;
-            height: auto;
-        }
-
-        .wa-btn {
-            margin-top: 30px;
-            background: #1dd858;
-            padding: 18px 40px;
-            color: black;
-            font-weight: bold;
-            border-radius: 16px;
-            font-size: 22px;
-            display: inline-block;
-            text-decoration: none;
-            transition: opacity 0.3s;
-        }
-        .wa-btn:hover { opacity: 0.8; }
-        
-        .error-box {
-            margin-top: 25px;
-            padding: 20px;
-            background-color: #550000;
-            border: 2px solid #ff5555;
-            border-radius: 16px;
-            max-width: 450px;
-            margin: 25px auto 0;
-            color: white;
-            text-align: left;
-        }
-        .error-box h2 {
-            margin-top: 0;
-        }
+        /* Стили точь-в-точь из вашего Python кода */
+        body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
+        h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+        input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
+        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
+        .result {margin:60px auto;max-width:600px; display: none;} /* Скрыто по умолчанию */
+        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
+        button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
+        .produce {background:#25d366;color:white;font-weight:bold;}
     </style>
-
 </head>
 <body>
 
-<h1>No One Else Has This</h1>
-<p>Describe your dream clothing — China makes it real</p>
+    <h1>No One Else Has This</h1>
+    <p>Describe your dream clothing — China makes it real</p>
 
-<form id="generator-form">
-    <div class="input-box">
-        <input name="prompt" id="prompt-input" required placeholder="e.g. sky blue pixel camo hoodie" />
-        <select name="size" id="size-select">
-            <option>S</option><option>M</option><option>L</option><option>XL</option>
+    <form id="appForm">
+        <input type="text" id="prompt" name="prompt" placeholder="Describe your dream clothing..." required>
+        <select id="size" name="size">
+            <option>XS</option>
+            <option>S</option>
+            <option selected>M</option>
+            <option>L</option>
+            <option>XL</option>
+            <option>XXL</option>
         </select>
-        <input name="qty" id="qty-input" type="number" min="1" value="1" />
+        <input type="text" id="qty" name="qty" placeholder="Quantity" value="1">
+        <input type="submit" value="Generate">
+    </form>
+
+    <div class="result" id="resultBlock">
+        <img id="resultImg" src="" alt="Generated Image">
+        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
     </div>
 
-    <button type="submit" id="generate-button">Generate Design</button>
-</form>
+    <script>
+        // Константы из вашего Python кода
+        const FACTORY_WHATSAPP = "8613980632981"; // + убран для ссылки
+        const YOUR_REFERRAL_CODE = "REF_GROK2025";
+        const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
-<div id="status-area"></div>
-<div id="result-area"></div>
-<div id="wa-link-area"></div>
+        document.getElementById('appForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // Останавливаем перезагрузку страницы
 
-<script>
-    // Настройки Google Imagen API
-    const MODEL_NAME = "imagen-4.0-generate-001";
-    const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:predict`;
+            const prompt = document.getElementById('prompt').value;
+            const size = document.getElementById('size').value;
+            const qty = document.getElementById('qty').value;
 
-    const form = document.getElementById('generator-form');
-    const statusArea = document.getElementById('status-area');
-    const resultArea = document.getElementById('result-area');
-    const waLinkArea = document.getElementById('wa-link-area');
-    const generateButton = document.getElementById('generate-button');
-    const promptInput = document.getElementById('prompt-input');
+            // 1. Аналог generate_image (Pollinations)
+            // Python: encoded_prompt = urllib.parse.quote(...)
+            const fullPrompt = `${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`;
+            const encodedPrompt = encodeURIComponent(fullPrompt);
+            const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=1024&height=1024`;
 
-    // ВНИМАНИЕ: apiKey остается пустой строкой, так как он предоставляется средой Canvas автоматически.
-    const apiKey = "AIzaSyCmtww1-BMs-zSspmI3dHDeF-0VZefK2sM"; 
-    
-    // Функция для создания ссылки WhatsApp
-    function createWaLink(prompt, size, qty) {
-        const text = `ORDER:\n\n${prompt}\nSize: ${size}\nQty: ${qty}`;
-        const encodedText = encodeURIComponent(text);
-        return `https://wa.me/8613980632981?text=${encodedText}`;
-    }
-
-    // Функция для отображения ошибки
-    function displayError(message) {
-        resultArea.innerHTML = '';
-        waLinkArea.innerHTML = '';
-        statusArea.innerHTML = `
-            <div class="error-box">
-                <h2>❌ Ошибка Генерации Изображения</h2>
-                <p>Произошла ошибка при обращении к API генерации изображений.</p>
-                <p>Детали: <strong>${message}</strong></p>
-                <p>Попробуйте изменить запрос или повторить попытку.</p>
-            </div>
-        `;
-    }
-    
-    // Основная логика генерации изображения с экспоненциальным отсрочкой (для стабильности)
-    async function generateImage(prompt) {
-        const MAX_RETRIES = 3;
-        const apiUrl = `${API_ENDPOINT}?key=${apiKey}`;
-
-        // Подготовка полезной нагрузки для API Imagen
-        const payload = { 
-            instances: [{ prompt: prompt }], 
-            parameters: { "sampleCount": 1 } 
-        };
-
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            const waitTime = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s...
-            
+            // Для отображения картинки сразу (как в Python коде img_b64)
+            // Мы сначала скачиваем её, чтобы потом отправить на ImgBB
             try {
-                const response = await fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
+                const response = await fetch(pollUrl);
+                const blob = await response.blob(); // Получаем картинку как файл
+
+                // Отображаем картинку пользователю
+                const imgUrlLocal = URL.createObjectURL(blob);
+                const resultImg = document.getElementById('resultImg');
+                resultImg.src = imgUrlLocal;
+                document.getElementById('resultBlock').style.display = 'block';
+
+                // 2. Аналог upload_to_imgbb
+                // Отправляем полученный blob на ImgBB
+                const formData = new FormData();
+                formData.append("image", blob);
                 
-                const result = await response.json();
-
-                // Успех: проверяем, есть ли Base64 данные изображения
-                if (response.ok && result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
-                    // Возвращаем Base64 строку изображения
-                    return result.predictions[0].bytesBase64Encoded; 
-                }
+                let finalImgUrl = "";
                 
-                // Обработка ошибок API
-                const errorMessage = result.error?.message || `API Error: ${response.status} ${response.statusText}`;
-
-                if (attempt < MAX_RETRIES && (response.status === 503 || response.status === 429)) {
-                    // 503 Service Unavailable или 429 Too Many Requests: пробуем снова
-                    statusArea.innerHTML = `<div class="loader">⏳ Generating... Service busy. Retrying in ${waitTime / 1000} seconds (Attempt ${attempt}/${MAX_RETRIES}).</div>`;
-                    await new Promise(resolve => setTimeout(resolve, waitTime));
-                    continue; 
+                try {
+                    const uploadReq = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const uploadData = await uploadReq.json();
+                    if (uploadData.success) {
+                        finalImgUrl = uploadData.data.url;
+                    } else {
+                        // Если ImgBB не сработал, используем ссылку Pollinations (фоллбэк из вашего кода)
+                        finalImgUrl = pollUrl; 
+                    }
+                } catch (err) {
+                    finalImgUrl = pollUrl; // Фоллбэк при ошибке сети
                 }
 
-                // Критическая ошибка (400, 403, 404, или последняя попытка)
-                throw new Error(errorMessage);
+                // 3. Аналог generate_whatsapp_link
+                const message = `Hello MMS Clothing!
+Fully custom clothing — cut & sew
+Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
+Design:
+${finalImgUrl}
+Description: ${prompt}
+Size: ${size} | Quantity: ${qty} pc(s)
+Please send quote + sample cost + lead time.
+Thank you!`;
+
+                const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+                
+                // Привязываем ссылку к кнопке
+                document.getElementById('waButton').onclick = function() {
+                    window.open(waLink);
+                };
 
             } catch (error) {
-                // Если попытки закончились, или это невосстановимая ошибка (например, ошибка сети)
-                if (attempt === MAX_RETRIES || !error.message.includes("Service busy")) {
-                     throw error;
-                }
+                console.error("Error:", error);
+                alert("Error generating image");
             }
-        }
-        
-        return null; // Should not be reached
-    }
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        const prompt = promptInput.value;
-        const size = document.getElementById('size-select').value;
-        const qty = document.getElementById('qty-input').value;
-
-        // 1. Установка состояния загрузки
-        generateButton.disabled = true;
-        generateButton.textContent = "⏳ Generating...";
-        resultArea.innerHTML = '';
-        waLinkArea.innerHTML = '';
-        statusArea.innerHTML = '<div class="loader">⏳ Generating your unique clothing design via Google Imagen…</div>';
-
-        // 2. Генерация изображения
-        let base64Data = null;
-        try {
-            base64Data = await generateImage(prompt);
-        } catch (error) {
-            displayError(error.message);
-        }
-
-        // 3. Снятие состояния загрузки
-        generateButton.disabled = false;
-        generateButton.textContent = "Generate Design";
-        statusArea.innerHTML = '';
-
-        if (base64Data) {
-            // Создание URL из Base64 данных
-            const imageUrl = `data:image/png;base64,${base64Data}`;
-            
-            // Отображение изображения
-            resultArea.innerHTML = `<img src="${imageUrl}" alt="AI Generated Clothing Design">`;
-
-            // Отображение ссылки WhatsApp
-            const waLink = createWaLink(prompt, size, qty);
-            waLinkArea.innerHTML = `<a class="wa-btn" href="${waLink}" target="_blank">Produce in China — $32–48</a>`;
-        }
-    });
-
-</script>
-
+        });
+    </script>
 </body>
 </html>
