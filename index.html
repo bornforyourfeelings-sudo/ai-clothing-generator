@@ -14,7 +14,7 @@
         input[type=submit]:hover:not(:disabled) {box-shadow: 0 0 15px #ff00aa;}
         
         .result {margin:60px auto;max-width:600px; display: none;} 
-        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
+        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88; min-height: 200px; object-fit: contain; background: #222;} 
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold; transition: 0.3s;}
         .produce:hover {box-shadow: 0 0 20px #25d366;}
@@ -23,9 +23,13 @@
         .loader {display:none; border: 5px solid #222; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
         @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
         
-        /* Блок ошибки */
-        .error-container {display: none; background: #3a0000; border: 2px solid #ff0000; padding: 15px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
-        .error-msg {color: #ff5555; margin: 0; font-weight: bold;}
+        /* Блок информации/ошибки */
+        .info-container {display: none; background: #333; border: 2px solid #555; padding: 15px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
+        .info-container.error {background: #3a0000; border-color: #ff0000;}
+        .info-container.warning {background: #aa6600; border-color: #ffcc00;}
+        .info-msg {color: #ccc; margin: 0; font-weight: bold;}
+        .info-container.error .info-msg {color: #ff5555;}
+        .info-container.warning .info-msg {color: #ffddaa;}
     </style>
 </head>
 <body>
@@ -49,8 +53,8 @@
     
     <div class="loader" id="loader"></div>
 
-    <div class="error-container" id="errorBlock">
-        <p class="error-msg">⚠️ Image generation failed. Please try again.</p>
+    <div class="info-container" id="infoBlock">
+        <p class="info-msg" id="infoMessage"></p>
     </div>
 
     <div class="result" id="resultBlock">
@@ -61,72 +65,122 @@
     <script>
         const FACTORY_WHATSAPP = "8613980632981"; 
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
+        // Заглушка, если API временно недоступен (чтобы не было пустой картинки)
+        const FALLBACK_IMAGE_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3Crect width='100%25' height='100%25' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='60' fill='%23ccc' text-anchor='middle' alignment-baseline='middle'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
+
+        let currentGenerationPrompt = ""; // Для повторных попыток
 
         document.getElementById('appForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
             
-            // Элементы UI
-            const promptVal = document.getElementById('prompt').value;
+            currentGenerationPrompt = document.getElementById('prompt').value; // Сохраняем запрос
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
+            
             const imgElement = document.getElementById('resultImg');
             const resultDiv = document.getElementById('resultBlock');
             const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
-            const errorBlock = document.getElementById('errorBlock');
+            const infoBlock = document.getElementById('infoBlock');
+            const infoMessage = document.getElementById('infoMessage');
 
-            // 1. Сброс интерфейса в состояние "Загрузка"
+            // Сброс интерфейса в состояние "Загрузка"
             btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
             resultDiv.style.display = "none";
-            errorBlock.style.display = "none";
+            infoBlock.style.display = "none";
+            infoBlock.classList.remove('error', 'warning'); // Сброс классов цвета
+            imgElement.src = ""; // Очищаем картинку для новой генерации
 
-            // 2. Генерация уникального ключа (seed)
+            generateImage(currentGenerationPrompt, sizeVal, qtyVal, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, 0); // Начинаем попытки генерации
+        });
+
+        // Функция для попыток генерации
+        function generateImage(prompt, size, qty, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, attempt) {
+            const MAX_ATTEMPTS = 2; // Максимум попыток генерации
+            const RETRY_DELAY_MS = 5000; // Задержка между попытками
+
+            // Генерация уникального ключа (seed) для каждой попытки
             const seed = Math.floor(Math.random() * 2000000);
             
-            // 3. Формирование ссылки. ИСПОЛЬЗУЕМ ДРУГОЙ ЭНДПОИНТ (pollinations.ai/p/)
-            // Он работает стабильнее для встраивания на сайты.
-            const basePrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
+            // Упрощенный запрос для стабильности
+            const basePrompt = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting`); // Убрал "ultra detailed, 8k"
             
-            // Новая структура ссылки:
             const imageUrl = `https://pollinations.ai/p/${basePrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
 
-            // Устанавливаем ссылку для картинки
-            imgElement.src = imageUrl;
+            console.log(`Attempt ${attempt + 1}: Loading image from ${imageUrl}`);
 
-            // --- Обработчики событий загрузки картинки ---
+            let generationTimeout; // Переменная для таймаута
 
-            // УСПЕХ: Картинка загрузилась
+            // Устанавливаем обработчики
             imgElement.onload = function() {
+                clearTimeout(generationTimeout); // Отменяем таймаут, если загрузка успешна
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
+                
+                // Обновляем ссылку WhatsApp
+                updateWhatsappLink(prompt, size, qty, imageUrl);
+            };
 
-                // Формируем ссылку WhatsApp с ТОЙ ЖЕ ссылкой на картинку
-                const message = `Hello MMS Clothing!
+            imgElement.onerror = function() {
+                clearTimeout(generationTimeout); // Отменяем таймаут
+                console.error(`Attempt ${attempt + 1}: Image failed to load.`);
+                
+                if (attempt < MAX_ATTEMPTS - 1) {
+                    // Если есть еще попытки, пробуем снова
+                    infoBlock.style.display = "block";
+                    infoBlock.classList.add('warning');
+                    infoMessage.textContent = `Image generation failed. Retrying in ${RETRY_DELAY_MS / 1000} seconds... (Attempt ${attempt + 1}/${MAX_ATTEMPTS})`;
+                    
+                    loader.style.display = "block"; // Держим лоадер
+                    btn.value = "Retrying...";
+                    btn.disabled = true;
+
+                    setTimeout(() => {
+                        generateImage(prompt, size, qty, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, attempt + 1);
+                    }, RETRY_DELAY_MS);
+                } else {
+                    // Если попытки закончились
+                    loader.style.display = "none";
+                    infoBlock.style.display = "block";
+                    infoBlock.classList.add('error');
+                    infoMessage.textContent = "⚠️ All image generation attempts failed. The API might be overloaded. You can still order by describing your design in WhatsApp!";
+                    btn.value = "Try Again";
+                    btn.disabled = false;
+                    imgElement.src = FALLBACK_IMAGE_PLACEHOLDER; // Показываем заглушку
+                    resultDiv.style.display = "block"; // Показываем блок с кнопкой Produce
+                    // Обновляем ссылку WhatsApp (только с описанием)
+                    updateWhatsappLink(prompt, size, qty, `Description: ${prompt}`);
+                }
+            };
+
+            // Запускаем таймер, если картинка не загрузится
+            generationTimeout = setTimeout(() => {
+                console.warn(`Attempt ${attempt + 1}: Image generation timed out.`);
+                imgElement.onerror(); // Вызываем обработчик ошибки вручную
+            }, 35000); // 35 секунд на генерацию
+
+            imgElement.src = imageUrl; // Запускаем загрузку
+        }
+
+        // Обновление ссылки WhatsApp
+        function updateWhatsappLink(prompt, size, qty, imageUrlOrDescription) {
+            const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
 Design:
-${imageUrl}
-Description: ${promptVal}
-Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
+${imageUrlOrDescription}
+Description: ${prompt}
+Size: ${size} | Quantity: ${qty} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
 
-                const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
-                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
-            };
-
-            // ОШИБКА: Картинка не загрузилась (например, таймаут)
-            imgElement.onerror = function() {
-                loader.style.display = "none";
-                errorBlock.style.display = "block"; // Показываем красную ошибку
-                btn.value = "Try Again";
-                btn.disabled = false;
-            };
-        });
+            const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+            document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
+        }
     </script>
 </body>
 </html>
