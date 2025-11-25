@@ -52,7 +52,7 @@
         // Ключ ImgBB
         const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
-        document.getElementById('appForm').addEventListener('submit', function(e) {
+        document.getElementById('appForm').addEventListener('submit', async function(e) {
             e.preventDefault(); 
             
             const promptVal = document.getElementById('prompt').value;
@@ -70,15 +70,32 @@
             resultDiv.style.display = "none";
 
             // Генерация ссылки Pollinations
-            // Добавляем seed, чтобы избежать кеширования и ошибок "старой" картинки
             const seed = Math.floor(Math.random() * 1000000);
-            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
-            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?model=flux&width=1024&height=1024&seed=${seed}`;
+            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, detailed, high quality`);
+            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${seed}&nologo=true`;
 
-            console.log("Loading URL:", pollUrl); // Для отладки
+            console.log("Loading URL:", pollUrl);
 
-            // Устанавливаем ссылку на картинку
-            imgElement.src = pollUrl;
+            // Предзагрузка через fetch с таймаутом
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 45000);
+
+            try {
+                await fetch(pollUrl, { 
+                    signal: controller.signal,
+                    mode: 'no-cors' 
+                });
+                clearTimeout(timeoutId);
+                
+                // Устанавливаем ссылку на картинку
+                imgElement.src = pollUrl;
+            } catch (err) {
+                clearTimeout(timeoutId);
+                if (err.name === 'AbortError') {
+                    console.log('Generation timeout, trying direct load...');
+                }
+                imgElement.src = pollUrl;
+            }
 
             // Если картинка загрузилась успешно
             imgElement.onload = async function() {
@@ -91,12 +108,10 @@
                 let finalLink = pollUrl;
 
                 // Пытаемся загрузить на ImgBB (в фоне)
-                // Если не выйдет - используем ссылку pollUrl, она тоже работает
                 try {
                     const formData = new FormData();
                     formData.append("image", pollUrl);
                     
-                    // fetch запрос к ImgBB
                     const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
                         method: 'POST',
                         body: formData
@@ -123,16 +138,27 @@ Thank you!`;
 
                 const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
                 
-                // Вешаем на кнопку
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
             // Если картинка НЕ загрузилась (ошибка генерации)
             imgElement.onerror = function() {
                 loader.style.display = "none";
-                btn.value = "Try Again";
+                btn.value = "Generate";
                 btn.disabled = false;
-                alert("Generation failed. Server busy, please click Generate again.");
+                
+                // Пробуем альтернативный сервис
+                const alternativeSeed = Math.floor(Math.random() * 1000000);
+                const altUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${alternativeSeed}&enhance=true`;
+                
+                console.log("Trying alternative URL:", altUrl);
+                imgElement.src = altUrl;
+                
+                // Если и альтернатива не сработала
+                imgElement.onerror = function() {
+                    loader.style.display = "none";
+                    alert("Image generation failed. Please try:\n1. Simplify your description\n2. Check internet connection\n3. Try again in a moment");
+                };
             };
         });
     </script>
