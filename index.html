@@ -48,9 +48,6 @@
     <script>
         const FACTORY_WHATSAPP = "8613980632981"; 
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
-        
-        // Ключ ImgBB
-        const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
         document.getElementById('appForm').addEventListener('submit', async function(e) {
             e.preventDefault(); 
@@ -69,97 +66,61 @@
             loader.style.display = "block";
             resultDiv.style.display = "none";
 
-            // Генерация ссылки Pollinations
-            const seed = Math.floor(Math.random() * 1000000);
-            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, detailed, high quality`);
-            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${seed}&nologo=true`;
+            const seed = Date.now();
+            const enhancedPrompt = encodeURIComponent(`${promptVal}, fashion product photography, white background, studio lighting, high quality, detailed`);
+            
+            // Пробуем разные API по очереди
+            const apis = [
+                `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true`,
+                `https://pollinations.ai/p/${enhancedPrompt}?width=1024&height=1024&seed=${seed}`,
+                `https://image.pollinations.ai/prompt/${enhancedPrompt}?seed=${seed}`
+            ];
 
-            console.log("Loading URL:", pollUrl);
+            let currentApiIndex = 0;
+            let imageUrl = apis[0];
 
-            // Предзагрузка через fetch с таймаутом
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000);
+            const tryLoadImage = () => {
+                console.log(`Trying API ${currentApiIndex + 1}: ${apis[currentApiIndex]}`);
+                imgElement.src = apis[currentApiIndex];
+            };
 
-            try {
-                await fetch(pollUrl, { 
-                    signal: controller.signal,
-                    mode: 'no-cors' 
-                });
-                clearTimeout(timeoutId);
-                
-                // Устанавливаем ссылку на картинку
-                imgElement.src = pollUrl;
-            } catch (err) {
-                clearTimeout(timeoutId);
-                if (err.name === 'AbortError') {
-                    console.log('Generation timeout, trying direct load...');
-                }
-                imgElement.src = pollUrl;
-            }
-
-            // Если картинка загрузилась успешно
-            imgElement.onload = async function() {
+            imgElement.onload = function() {
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
 
-                // Сначала готовим финальную ссылку как ссылку генератора (резервный вариант)
-                let finalLink = pollUrl;
-
-                // Пытаемся загрузить на ImgBB (в фоне)
-                try {
-                    const formData = new FormData();
-                    formData.append("image", pollUrl);
-                    
-                    const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const response = await upload.json();
-                    
-                    if(response.success) {
-                        finalLink = response.data.url;
-                    }
-                } catch (err) {
-                    console.log("ImgBB fail, keeping original link");
-                }
-
-                // Формируем ссылку WhatsApp
                 const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
-Design:
-${finalLink}
+Design: ${imgElement.src}
 Description: ${promptVal}
 Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
 
                 const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
-                
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
-            // Если картинка НЕ загрузилась (ошибка генерации)
             imgElement.onerror = function() {
-                loader.style.display = "none";
-                btn.value = "Generate";
-                btn.disabled = false;
+                currentApiIndex++;
                 
-                // Пробуем альтернативный сервис
-                const alternativeSeed = Math.floor(Math.random() * 1000000);
-                const altUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?width=1024&height=1024&seed=${alternativeSeed}&enhance=true`;
-                
-                console.log("Trying alternative URL:", altUrl);
-                imgElement.src = altUrl;
-                
-                // Если и альтернатива не сработала
-                imgElement.onerror = function() {
+                if (currentApiIndex < apis.length) {
+                    // Пробуем следующий API
+                    setTimeout(tryLoadImage, 1000);
+                } else {
+                    // Все API не сработали
                     loader.style.display = "none";
-                    alert("Image generation failed. Please try:\n1. Simplify your description\n2. Check internet connection\n3. Try again in a moment");
-                };
+                    btn.value = "Generate";
+                    btn.disabled = false;
+                    
+                    alert("⚠️ Image generation temporarily unavailable.\n\nThis happens when:\n• API servers are busy\n• Network connection issues\n\nSolutions:\n✓ Wait 30 seconds and try again\n✓ Simplify your description\n✓ Try a different browser\n\nYou can still order - just describe your design in WhatsApp!");
+                }
             };
+
+            // Начинаем загрузку
+            tryLoadImage();
         });
     </script>
 </body>
