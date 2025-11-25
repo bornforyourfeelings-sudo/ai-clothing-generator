@@ -2,8 +2,8 @@ from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
-# Мы переносим логику в HTML/JS, чтобы избежать блокировки IP сервера Render
-HTML = """
+# Вся логика перенесена в JavaScript, чтобы обойти блокировку IP Render
+HTML_CODE = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,10 +22,8 @@ HTML = """
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold;}
         
-        /* Лоадер */
         .loader {display:none; border: 5px solid #222; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
         @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
-        
         .error-msg {color: #ff3333; display: none; margin-top: 20px;}
     </style>
 </head>
@@ -49,7 +47,7 @@ HTML = """
     </form>
     
     <div class="loader" id="loader"></div>
-    <p class="error-msg" id="errorMsg">Image generation timed out. Please try again.</p>
+    <p class="error-msg" id="errorMsg">Generation failed. Please try again.</p>
 
     <div class="result" id="resultBlock">
         <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
@@ -63,44 +61,40 @@ HTML = """
         document.getElementById('appForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
             
-            // Получаем данные
             const promptVal = document.getElementById('prompt').value;
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
             
-            // Элементы UI
             const imgElement = document.getElementById('resultImg');
             const resultDiv = document.getElementById('resultBlock');
             const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
             const errorMsg = document.getElementById('errorMsg');
 
-            // Сброс интерфейса
+            // Сброс UI
             btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
             resultDiv.style.display = "none";
             errorMsg.style.display = "none";
 
-            // Генерация уникального seed
+            // Генерация ссылки (Seed делает её уникальной)
             const seed = Math.floor(Math.random() * 1000000);
-            
-            // Формирование ссылки
-            const cleanPrompt = encodeURIComponent(promptVal + ", fashion product photo, white background, studio lighting, 8k");
-            // Добавляем nologo=true и seed
-            const imageUrl = "https://image.pollinations.ai/prompt/" + cleanPrompt + "?model=flux&width=1024&height=1024&seed=" + seed + "&nologo=true";
+            const fullPrompt = encodeURIComponent(promptVal + ", fashion product photo, white background, studio lighting, 8k");
+            // Добавляем nologo=true
+            const imageUrl = "https://image.pollinations.ai/prompt/" + fullPrompt + "?model=flux&width=1024&height=1024&seed=" + seed + "&nologo=true";
 
-            // Ставим ссылку в img src
+            // Устанавливаем источник картинки
             imgElement.src = imageUrl;
 
-            // Обработчик успешной загрузки
+            // Если картинка загрузилась
             imgElement.onload = function() {
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
 
-                // Ссылка для WhatsApp (та же самая картинка)
+                // Ссылка WhatsApp с тем же URL картинки
                 const message = "Hello MMS Clothing!\\nFully custom clothing — cut & sew\\nReferral: " + YOUR_REFERRAL_CODE + " → 25% cashback\\nDesign:\\n" + imageUrl + "\\nDescription: " + promptVal + "\\nSize: " + sizeVal + " | Quantity: " + qtyVal + " pc(s)\\nPlease send quote + sample cost + lead time.\\nThank you!";
 
                 const waLink = "https://wa.me/" + FACTORY_WHATSAPP + "?text=" + encodeURIComponent(message);
@@ -108,7 +102,7 @@ HTML = """
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
-            // Обработчик ошибки
+            // Если ошибка загрузки
             imgElement.onerror = function() {
                 loader.style.display = "none";
                 errorMsg.style.display = "block";
@@ -121,10 +115,11 @@ HTML = """
 </html>
 """
 
-@app.route('/')
+@app.route('/', methods=['GET', 'POST'])
 def home():
-    # Flask теперь просто отдает HTML, а вся тяжелая работа делается в браузере
-    return render_template_string(HTML)
+    # Просто отдаем HTML. Python здесь "отдыхает".
+    return render_template_string(HTML_CODE)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    # Порт для локального запуска, на Render он игнорируется (используется gunicorn)
+    app.run(debug=True)
