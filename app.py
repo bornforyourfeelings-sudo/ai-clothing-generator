@@ -3,9 +3,6 @@ import os
 
 app = Flask(__name__)
 
-FACTORY_WHATSAPP = "+8615808103712"
-YOUR_REFERRAL_CODE = "REF_GROK2025"
-
 HTML = """
 <!DOCTYPE html>
 <html lang="en">
@@ -48,105 +45,91 @@ HTML = """
     <div class="error" id="error" style="display:none;"></div>
     
     <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image">
+        <img id="resultImg" src="" alt="Generated Image" crossorigin="anonymous">
         <button class="produce" id="waButton">Produce in China — $32–48</button>
     </div>
 
     <script>
-        const FACTORY_WHATSAPP = "{{ whatsapp }}";
-        const YOUR_REFERRAL_CODE = "{{ referral }}";
+        const FACTORY_WHATSAPP = "8615808103712";
+        const REFERRAL = "REF_GROK2025";
 
-        document.getElementById('appForm').addEventListener('submit', async function(e) {
+        document.getElementById('appForm').onsubmit = async (e) => {
             e.preventDefault();
             
-            const promptVal = document.getElementById('prompt').value.trim();
-            const sizeVal = document.getElementById('size').value;
-            const qtyVal = document.getElementById('qty').value;
-            const imgElement = document.getElementById('resultImg');
-            const resultDiv = document.getElementById('resultBlock');
+            const prompt = document.getElementById('prompt').value.trim();
+            const size = document.getElementById('size').value;
+            const qty = document.getElementById('qty').value;
+            const img = document.getElementById('resultImg');
+            const result = document.getElementById('resultBlock');
             const loader = document.getElementById('loader');
             const btn = document.getElementById('btn');
             const status = document.getElementById('status');
-            const errorDiv = document.getElementById('error');
+            const error = document.getElementById('error');
 
             btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
-            resultDiv.style.display = "none";
-            errorDiv.style.display = "none";
-            status.textContent = "Generating image... This may take 30-60 seconds";
+            result.style.display = "none";
+            error.style.display = "none";
+            status.textContent = "Generating image... 30-60 seconds";
 
-            const enhancedPrompt = `${promptVal}, fashion product photo, white background, studio lighting, high quality`;
+            const enhanced = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting, professional`);
             const seed = Date.now();
             
-            // Multiple API attempts
-            const apis = [
-                `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`,
-                `https://pollinations.ai/p/${encodeURIComponent(enhancedPrompt)}?width=1024&height=1024&seed=${seed}`,
-                `https://image.pollinations.ai/prompt/${encodeURIComponent(enhancedPrompt)}?seed=${seed}`,
+            const urls = [
+                `https://image.pollinations.ai/prompt/${enhanced}?width=1024&height=1024&seed=${seed}&nologo=true`,
+                `https://image.pollinations.ai/prompt/${enhanced}?seed=${seed}`,
+                `https://pollinations.ai/p/${enhanced}`,
             ];
 
-            let currentApiIndex = 0;
+            let i = 0;
             let imageUrl = '';
-            let attempts = 0;
-            const maxAttempts = 3;
 
-            async function tryGenerate() {
-                if (currentApiIndex >= apis.length) {
-                    attempts++;
-                    if (attempts < maxAttempts) {
-                        status.textContent = `Attempt ${attempts + 1}/${maxAttempts}... Servers are busy, retrying...`;
-                        currentApiIndex = 0;
-                        setTimeout(tryGenerate, 2000);
-                        return;
-                    }
-                    
+            function tryLoad() {
+                if (i >= urls.length) {
                     loader.style.display = "none";
                     btn.value = "Generate";
                     btn.disabled = false;
                     status.textContent = "";
-                    errorDiv.textContent = "⚠️ Image generation temporarily unavailable. API servers are overloaded. Please try again in 1-2 minutes, or describe your design directly in WhatsApp - the factory can help visualize it!";
-                    errorDiv.style.display = "block";
+                    error.textContent = "⚠️ AI image generation is temporarily unavailable (free API overloaded). You can still order - just describe your design in WhatsApp and the factory will help visualize it!";
+                    error.style.display = "block";
                     return;
                 }
-
-                const apiUrl = apis[currentApiIndex];
-                console.log(`Trying API ${currentApiIndex + 1}: ${apiUrl}`);
-                status.textContent = `Trying generation method ${currentApiIndex + 1}/${apis.length}...`;
-
-                imageUrl = apiUrl;
-                imgElement.src = apiUrl;
+                
+                imageUrl = urls[i];
+                status.textContent = `Trying method ${i+1}/${urls.length}...`;
+                console.log('Trying:', imageUrl);
+                img.src = imageUrl;
             }
 
-            imgElement.onload = function() {
-                console.log("Image loaded successfully!");
+            img.onload = () => {
                 loader.style.display = "none";
-                resultDiv.style.display = "block";
+                result.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
                 status.textContent = "";
 
-                const message = `Hello MMS Clothing!
+                const msg = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
-Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
+Referral: ${REFERRAL} → 25% cashback
 Design: ${imageUrl}
-Description: ${promptVal}
-Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
+Description: ${prompt}
+Size: ${size} | Quantity: ${qty} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
 
-                const waLink = `https://api.whatsapp.com/send?phone=${FACTORY_WHATSAPP}&text=${encodeURIComponent(message)}`;
-                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
+                document.getElementById('waButton').onclick = () => 
+                    window.open(`https://api.whatsapp.com/send?phone=${FACTORY_WHATSAPP}&text=${encodeURIComponent(msg)}`, '_blank');
             };
 
-            imgElement.onerror = function() {
-                console.log(`API ${currentApiIndex + 1} failed, trying next...`);
-                currentApiIndex++;
-                setTimeout(tryGenerate, 1000);
+            img.onerror = () => {
+                console.log(`Method ${i+1} failed`);
+                i++;
+                setTimeout(tryLoad, 1500);
             };
 
-            tryGenerate();
-        });
+            tryLoad();
+        };
     </script>
 </body>
 </html>
@@ -154,8 +137,7 @@ Thank you!`;
 
 @app.route('/')
 def home():
-    return render_template_string(HTML, whatsapp=FACTORY_WHATSAPP, referral=YOUR_REFERRAL_CODE)
+    return render_template_string(HTML)
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
