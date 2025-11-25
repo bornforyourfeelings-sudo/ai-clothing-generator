@@ -5,15 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>No One Else Has This</title>
     <style>
-        /* Стили точь-в-точь из вашего Python кода */
+        /* Стиль сохранен полностью без изменений */
         body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
         input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
-        .result {margin:60px auto;max-width:600px; display: none;} /* Скрыто по умолчанию */
+        .result {margin:60px auto;max-width:600px; display: none;} 
         img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold;}
+        
+        /* Добавил спиннер загрузки, чтобы было видно процесс */
+        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto;}
+        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
     </style>
 </head>
 <body>
@@ -32,8 +36,10 @@
             <option>XXL</option>
         </select>
         <input type="text" id="qty" name="qty" placeholder="Quantity" value="1">
-        <input type="submit" value="Generate">
+        <input type="submit" id="submitBtn" value="Generate">
     </form>
+    
+    <div class="loader" id="loader"></div>
 
     <div class="result" id="resultBlock">
         <img id="resultImg" src="" alt="Generated Image">
@@ -41,81 +47,90 @@
     </div>
 
     <script>
-        // Константы из вашего Python кода
-        const FACTORY_WHATSAPP = "8613980632981"; // + убран для ссылки
+        // Константы
+        const FACTORY_WHATSAPP = "8613980632981"; 
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
         const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
         document.getElementById('appForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // Останавливаем перезагрузку страницы
+            e.preventDefault(); 
+            
+            // Элементы интерфейса
+            const promptVal = document.getElementById('prompt').value;
+            const sizeVal = document.getElementById('size').value;
+            const qtyVal = document.getElementById('qty').value;
+            const imgElement = document.getElementById('resultImg');
+            const resultDiv = document.getElementById('resultBlock');
+            const loader = document.getElementById('loader');
+            const btn = document.getElementById('submitBtn');
 
-            const prompt = document.getElementById('prompt').value;
-            const size = document.getElementById('size').value;
-            const qty = document.getElementById('qty').value;
+            // 1. Показываем загрузку
+            btn.value = "Generating...";
+            btn.disabled = true;
+            loader.style.display = "block";
+            resultDiv.style.display = "none";
 
-            // 1. Аналог generate_image (Pollinations)
-            // Python: encoded_prompt = urllib.parse.quote(...)
-            const fullPrompt = `${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`;
-            const encodedPrompt = encodeURIComponent(fullPrompt);
-            const pollUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=1024&height=1024`;
+            // 2. Формируем ссылку на генерацию (Pollinations)
+            const fullPrompt = `${promptVal}, fashion product photo, white background, studio lighting, ultra detailed, 8k`;
+            // encodeURIComponent - это аналог urllib.parse.quote в JS
+            const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?model=flux&width=1024&height=1024&nologo=true`;
 
-            // Для отображения картинки сразу (как в Python коде img_b64)
-            // Мы сначала скачиваем её, чтобы потом отправить на ImgBB
-            try {
-                const response = await fetch(pollUrl);
-                const blob = await response.blob(); // Получаем картинку как файл
+            // 3. Сразу ставим картинку в тег IMG (это работает всегда)
+            // Добавляем случайное число, чтобы браузер не кешировал старые запросы
+            const cacheBuster = `&t=${new Date().getTime()}`;
+            imgElement.src = pollUrl + cacheBuster;
 
-                // Отображаем картинку пользователю
-                const imgUrlLocal = URL.createObjectURL(blob);
-                const resultImg = document.getElementById('resultImg');
-                resultImg.src = imgUrlLocal;
-                document.getElementById('resultBlock').style.display = 'block';
+            // Ждем пока картинка прогрузится визуально
+            imgElement.onload = async function() {
+                loader.style.display = "none";
+                resultDiv.style.display = "block";
+                btn.value = "Generate";
+                btn.disabled = false;
 
-                // 2. Аналог upload_to_imgbb
-                // Отправляем полученный blob на ImgBB
-                const formData = new FormData();
-                formData.append("image", blob);
-                
-                let finalImgUrl = "";
+                // 4. Пытаемся получить "вечную" ссылку через ImgBB
+                // ВАЖНО: Мы отправляем URL, а не файл, чтобы обойти CORS
+                let finalLink = pollUrl; // Если ImgBB не сработает, используем ссылку генератора
                 
                 try {
-                    const uploadReq = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+                    const formData = new FormData();
+                    formData.append("image", pollUrl); // Отправляем ССЫЛКУ, сервер ImgBB сам скачает
+                    
+                    const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
                         method: 'POST',
                         body: formData
                     });
-                    const uploadData = await uploadReq.json();
-                    if (uploadData.success) {
-                        finalImgUrl = uploadData.data.url;
-                    } else {
-                        // Если ImgBB не сработал, используем ссылку Pollinations (фоллбэк из вашего кода)
-                        finalImgUrl = pollUrl; 
+                    const response = await upload.json();
+                    
+                    if(response.success) {
+                        finalLink = response.data.url;
                     }
                 } catch (err) {
-                    finalImgUrl = pollUrl; // Фоллбэк при ошибке сети
+                    console.log("ImgBB fail, using direct link");
                 }
 
-                // 3. Аналог generate_whatsapp_link
+                // 5. Обновляем кнопку WhatsApp
                 const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
 Design:
-${finalImgUrl}
-Description: ${prompt}
-Size: ${size} | Quantity: ${qty} pc(s)
+${finalLink}
+Description: ${promptVal}
+Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
 
                 const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
                 
-                // Привязываем ссылку к кнопке
-                document.getElementById('waButton').onclick = function() {
-                    window.open(waLink);
-                };
+                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
+            };
 
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Error generating image");
-            }
+            // Обработка ошибки, если сама генерация упала
+            imgElement.onerror = function() {
+                loader.style.display = "none";
+                btn.value = "Try Again";
+                btn.disabled = false;
+                alert("Generation failed. Please try a different prompt.");
+            };
         });
     </script>
 </body>
