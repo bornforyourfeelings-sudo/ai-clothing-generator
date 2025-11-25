@@ -8,25 +8,19 @@
         body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
-        .result {margin:60px auto;max-width:600px; display: none;} 
+        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
+        .result {margin:60px auto;max-width:600px; display: none;}
         img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold;}
-        
-        /* Лоадер */
-        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
-        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
     </style>
 </head>
 <body>
-
     <h1>No One Else Has This</h1>
     <p>Describe your dream clothing — China makes it real</p>
-
-    <form id="appForm">
-        <input type="text" id="prompt" name="prompt" placeholder="Describe your dream clothing..." required>
-        <select id="size" name="size">
+    <form id="clothing-form">
+        <input type="text" name="prompt" placeholder="Describe your dream clothing..." required>
+        <select name="size">
             <option>XS</option>
             <option>S</option>
             <option selected>M</option>
@@ -34,106 +28,64 @@
             <option>XL</option>
             <option>XXL</option>
         </select>
-        <input type="text" id="qty" name="qty" placeholder="Quantity" value="1">
-        <input type="submit" id="submitBtn" value="Generate">
+        <input type="text" name="qty" placeholder="Quantity" value="1">
+        <input type="submit" value="Generate">
     </form>
-    
-    <div class="loader" id="loader"></div>
-
-    <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
-        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
-    </div>
+    <div id="result" class="result"></div>
 
     <script>
-        const FACTORY_WHATSAPP = "8613980632981"; 
-        const YOUR_REFERRAL_CODE = "REF_GROK2025";
-        
-        // Ключ ImgBB
-        const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
+        document.getElementById('clothing-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const prompt = document.querySelector('input[name="prompt"]').value.trim();
+            const size = document.querySelector('select[name="size"]').value;
+            const qty = document.querySelector('input[name="qty"]').value || '1';
 
-        document.getElementById('appForm').addEventListener('submit', function(e) {
-            e.preventDefault(); 
-            
-            const promptVal = document.getElementById('prompt').value;
-            const sizeVal = document.getElementById('size').value;
-            const qtyVal = document.getElementById('qty').value;
-            const imgElement = document.getElementById('resultImg');
-            const resultDiv = document.getElementById('resultBlock');
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('submitBtn');
+            const encoded_prompt = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting, ultra detailed, 8k`);
+            const url = `https://image.pollinations.ai/prompt/${encoded_prompt}?model=flux&width=1024&height=1024`;
 
-            // UI Loading state
-            btn.value = "Dreaming...";
-            btn.disabled = true;
-            loader.style.display = "block";
-            resultDiv.style.display = "none";
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('Image generation failed');
+                const blob = await res.blob();
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onload = async function() {
+                    const img_src = reader.result;
+                    const img_b64 = img_src.split(',')[1];
 
-            // Генерация ссылки Pollinations
-            // Добавляем seed, чтобы избежать кеширования и ошибок "старой" картинки
-            const seed = Math.floor(Math.random() * 1000000);
-            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
-            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?model=flux&width=1024&height=1024&seed=${seed}`;
-
-            console.log("Loading URL:", pollUrl); // Для отладки
-
-            // Устанавливаем ссылку на картинку
-            imgElement.src = pollUrl;
-
-            // Если картинка загрузилась успешно
-            imgElement.onload = async function() {
-                loader.style.display = "none";
-                resultDiv.style.display = "block";
-                btn.value = "Generate";
-                btn.disabled = false;
-
-                // Сначала готовим финальную ссылку как ссылку генератора (резервный вариант)
-                let finalLink = pollUrl;
-
-                // Пытаемся загрузить на ImgBB (в фоне)
-                // Если не выйдет - используем ссылку pollUrl, она тоже работает
-                try {
-                    const formData = new FormData();
-                    formData.append("image", pollUrl);
-                    
-                    // fetch запрос к ImgBB
-                    const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const response = await upload.json();
-                    
-                    if(response.success) {
-                        finalLink = response.data.url;
+                    let img_url = `data:image/png;base64,${img_b64}`;
+                    try {
+                        const formData = new FormData();
+                        formData.append('key', '10b08c5be2b4f6c9a2f1d2e8f7c3e4a5');
+                        formData.append('image', img_b64);
+                        const uploadRes = await fetch('https://api.imgbb.com/1/upload', { method: 'POST', body: formData });
+                        if (!uploadRes.ok) throw new Error('Upload failed');
+                        const uploadData = await uploadRes.json();
+                        if (uploadData.data && uploadData.data.url) {
+                            img_url = uploadData.data.url;
+                        }
+                    } catch (uploadError) {
+                        console.error('Upload to imgbb failed:', uploadError);
                     }
-                } catch (err) {
-                    console.log("ImgBB fail, keeping original link");
-                }
 
-                // Формируем ссылку WhatsApp
-                const message = `Hello MMS Clothing!
-Fully custom clothing — cut & sew
-Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
-Design:
-${finalLink}
-Description: ${promptVal}
-Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
-Please send quote + sample cost + lead time.
-Thank you!`;
+                    const FACTORY_WHATSAPP = "+8615808103712";
+                    const YOUR_REFERRAL_CODE = "REF_GROK2025";
+                    const message = `Hello MMS Clothing!\nFully custom clothing — cut & sew\nReferral: ${YOUR_REFERRAL_CODE} → 25% cashback\nDesign:\n${img_url}\nDescription: ${prompt}\nSize: ${size} | Quantity: ${qty} pc(s)\nPlease send quote + sample cost + lead time.\nThank you!`;
+                    const phone = FACTORY_WHATSAPP.replace('+', '');
+                    const encoded_message = encodeURIComponent(message);
+                    const wa_link = `https://api.whatsapp.com/send?phone=${phone}&text=${encoded_message}`;
 
-                const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
-                
-                // Вешаем на кнопку
-                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
-            };
-
-            // Если картинка НЕ загрузилась (ошибка генерации)
-            imgElement.onerror = function() {
-                loader.style.display = "none";
-                btn.value = "Try Again";
-                btn.disabled = false;
-                alert("Generation failed. Server busy, please click Generate again.");
-            };
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = `
+                        <img src="${img_src}" alt="Generated Image">
+                        <button class="produce" onclick="window.open('${wa_link}')"> Produce in China — $32–48 </button>
+                    `;
+                    resultDiv.style.display = 'block';
+                };
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            }
         });
     </script>
 </body>
