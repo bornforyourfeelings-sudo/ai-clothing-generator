@@ -5,28 +5,93 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>No One Else Has This</title>
     <style>
-        body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
-        h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
-        input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
-        .result {margin:60px auto;max-width:600px; display: none;} 
-        img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
-        button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
-        .produce {background:#25d366;color:white;font-weight:bold;}
-        
-        /* Лоадер */
-        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
-        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
+        body {
+            font-family: Arial;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            padding: 30px;
+        }
+        h1 {
+            font-size: 2.8em;
+            background: linear-gradient(90deg, #ff00aa, #00ffff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        input[type=text], select {
+            width: 90%;
+            max-width: 600px;
+            padding: 18px;
+            margin: 10px;
+            font-size: 1.4em;
+            border: 3px solid #ff00aa;
+            border-radius: 15px;
+            background: #111;
+            color: white;
+        }
+        input[type=submit] {
+            padding: 18px 60px;
+            font-size: 1.6em;
+            background: #ff00aa;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+        input[type=submit]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .result {
+            margin: 60px auto;
+            max-width: 600px;
+            display: none;
+        }
+        img {
+            width: 100%;
+            border-radius: 20px;
+            margin: 20px 0;
+            box-shadow: 0 0 40px #ff00aa88;
+        }
+        button {
+            margin: 15px 0;
+            padding: 16px;
+            width: 100%;
+            font-size: 1.3em;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+        }
+        .produce {
+            background: #25d366;
+            color: white;
+            font-weight: bold;
+        }
+        .loader {
+            display: none;
+            border: 5px solid #333;
+            border-top: 5px solid #ff00aa;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
-
     <h1>No One Else Has This</h1>
     <p>Describe your dream clothing — China makes it real</p>
 
     <form id="appForm">
-        <input type="text" id="prompt" name="prompt" placeholder="Describe your dream clothing..." required>
-        <select id="size" name="size">
+        <input type="text" id="prompt" placeholder="Describe your dream clothing..." required>
+        <select id="size">
             <option>XS</option>
             <option>S</option>
             <option selected>M</option>
@@ -34,25 +99,25 @@
             <option>XL</option>
             <option>XXL</option>
         </select>
-        <input type="text" id="qty" name="qty" placeholder="Quantity" value="1">
+        <input type="text" id="qty" placeholder="Quantity" value="1">
         <input type="submit" id="submitBtn" value="Generate">
     </form>
-    
+
     <div class="loader" id="loader"></div>
 
     <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
-        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
+        <img id="resultImg" src="" alt="Generated Image">
+        <button class="produce" id="waButton">Produce in China — $32–48</button>
     </div>
 
     <script>
-        const FACTORY_WHATSAPP = "8613980632981"; 
+        const FACTORY_WHATSAPP = "8615808103712";
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
 
         document.getElementById('appForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); 
-            
-            const promptVal = document.getElementById('prompt').value;
+            e.preventDefault();
+
+            const promptVal = document.getElementById('prompt').value.trim();
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
             const imgElement = document.getElementById('resultImg');
@@ -60,67 +125,66 @@
             const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
 
-            // UI Loading state
+            // Show loading state
             btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
             resultDiv.style.display = "none";
 
-            const seed = Date.now();
-            const enhancedPrompt = encodeURIComponent(`${promptVal}, fashion product photography, white background, studio lighting, high quality, detailed`);
+            // Generate image URL exactly like Python code
+            const enhancedPrompt = `${promptVal}, fashion product photo, white background, studio lighting, ultra detailed, 8k`;
+            const encodedPrompt = encodeURIComponent(enhancedPrompt);
             
-            // Пробуем разные API по очереди
-            const apis = [
-                `https://image.pollinations.ai/prompt/${enhancedPrompt}?width=1024&height=1024&seed=${seed}&nologo=true`,
-                `https://pollinations.ai/p/${enhancedPrompt}?width=1024&height=1024&seed=${seed}`,
-                `https://image.pollinations.ai/prompt/${enhancedPrompt}?seed=${seed}`
-            ];
+            // Using exact same URL structure as Python code
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=flux&width=1024&height=1024`;
 
-            let currentApiIndex = 0;
-            let imageUrl = apis[0];
+            console.log("Generated URL:", imageUrl);
 
-            const tryLoadImage = () => {
-                console.log(`Trying API ${currentApiIndex + 1}: ${apis[currentApiIndex]}`);
-                imgElement.src = apis[currentApiIndex];
-            };
+            // Set image source
+            imgElement.src = imageUrl;
 
+            // Handle successful load
             imgElement.onload = function() {
+                console.log("Image loaded successfully!");
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
 
+                // Create WhatsApp link with image URL
                 const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
-Design: ${imgElement.src}
+Design:
+${imageUrl}
 Description: ${promptVal}
 Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
 Please send quote + sample cost + lead time.
 Thank you!`;
 
-                const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+                const waLink = `https://api.whatsapp.com/send?phone=${FACTORY_WHATSAPP}&text=${encodeURIComponent(message)}`;
+                
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
+            // Handle load error
             imgElement.onerror = function() {
-                currentApiIndex++;
+                console.log("Image load failed, trying alternative...");
                 
-                if (currentApiIndex < apis.length) {
-                    // Пробуем следующий API
-                    setTimeout(tryLoadImage, 1000);
-                } else {
-                    // Все API не сработали
+                // Try alternative URL without model parameter
+                const altUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024`;
+                console.log("Trying alternative URL:", altUrl);
+                
+                imgElement.src = altUrl;
+                
+                // Second attempt error handler
+                imgElement.onerror = function() {
                     loader.style.display = "none";
                     btn.value = "Generate";
                     btn.disabled = false;
-                    
-                    alert("⚠️ Image generation temporarily unavailable.\n\nThis happens when:\n• API servers are busy\n• Network connection issues\n\nSolutions:\n✓ Wait 30 seconds and try again\n✓ Simplify your description\n✓ Try a different browser\n\nYou can still order - just describe your design in WhatsApp!");
-                }
+                    alert("Generation failed. Server is busy. Please try again in 30 seconds.");
+                };
             };
-
-            // Начинаем загрузку
-            tryLoadImage();
         });
     </script>
 </body>
