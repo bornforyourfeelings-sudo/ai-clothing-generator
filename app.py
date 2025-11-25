@@ -1,9 +1,74 @@
-from flask import Flask, render_template_string
+from flask import Flask, request, render_template_string
+import urllib.parse
+import requests
+import base64
+import time
+import os
 
 app = Flask(__name__)
 
-# Вся логика перенесена в JavaScript, чтобы обойти блокировку IP Render
-HTML_CODE = """
+FACTORY_WHATSAPP = "+8615808103712"
+YOUR_REFERRAL_CODE = "REF_GROK2025"
+
+def generate_image(prompt):
+    seed = int(time.time())
+    encoded_prompt = urllib.parse.quote(f"{prompt}, fashion product photo, white background, studio lighting, detailed")
+    
+    apis = [
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1024&height=1024&seed={seed}&nologo=true",
+        f"https://pollinations.ai/p/{encoded_prompt}?width=1024&height=1024&seed={seed}",
+        f"https://image.pollinations.ai/prompt/{encoded_prompt}?seed={seed}",
+    ]
+    
+    last_error = None
+    
+    for i, url in enumerate(apis):
+        try:
+            print(f"Trying API {i+1}: {url}")
+            r = requests.get(url, timeout=45, headers={'User-Agent': 'Mozilla/5.0'})
+            
+            if r.status_code == 200 and len(r.content) > 1000:
+                print(f"Success with API {i+1}")
+                return base64.b64encode(r.content).decode()
+            else:
+                print(f"API {i+1} failed: status {r.status_code}")
+                
+        except Exception as e:
+            print(f"API {i+1} error: {e}")
+            last_error = str(e)
+            time.sleep(1)
+            continue
+    
+    raise Exception(f"All APIs failed. Last error: {last_error}")
+
+def upload_to_imgbb(b64_image):
+    try:
+        r = requests.post(
+            "https://api.imgbb.com/1/upload",
+            data={"key": "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5", "image": b64_image},
+            timeout=15
+        )
+        if r.status_code == 200:
+            return r.json()["data"]["url"]
+    except Exception as e:
+        print(f"ImgBB failed: {e}")
+    
+    return f"data:image/png;base64,{b64_image}"
+
+def generate_whatsapp_link(prompt, img_url, size, qty):
+    message = f"""Hello MMS Clothing!
+Fully custom clothing — cut & sew
+Referral: {YOUR_REFERRAL_CODE} → 25% cashback
+Design:
+{img_url}
+Description: {prompt}
+Size: {size} | Quantity: {qty} pc(s)
+Please send quote + sample cost + lead time.
+Thank you!"""
+    phone = FACTORY_WHATSAPP.replace('+', '')
+    return f"https://api.whatsapp.com/send?phone={phone}&text={urllib.parse.quote(message)}"
+
+HTML = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,101 +80,43 @@ HTML_CODE = """
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
         input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
-        input[type=submit]:disabled {background:#555;cursor:wait;}
-        
-        .result {margin:60px auto;max-width:600px; display: none;} 
+        .result {margin:60px auto;max-width:600px;}
         img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold;}
-        
-        .loader {display:none; border: 5px solid #222; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
-        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
-        .error-msg {color: #ff3333; display: none; margin-top: 20px;}
+        .error {color:#ff00aa;margin:20px;padding:15px;background:#330011;border-radius:10px;}
+        .loader {display:none;border:5px solid #333;border-top:5px solid #ff00aa;border-radius:50%;width:50px;height:50px;animation:spin 1s linear infinite;margin:30px auto;}
+        @keyframes spin {0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
     </style>
 </head>
 <body>
-
     <h1>No One Else Has This</h1>
     <p>Describe your dream clothing — China makes it real</p>
-
-    <form id="appForm">
-        <input type="text" id="prompt" placeholder="Describe your dream clothing..." required>
-        <select id="size">
-            <option>XS</option>
-            <option>S</option>
-            <option selected>M</option>
-            <option>L</option>
-            <option>XL</option>
-            <option>XXL</option>
+    <form method="post" id="mainForm">
+        <input type="text" name="prompt" placeholder="Describe your dream clothing..." required>
+        <select name="size">
+            <option>XS</option><option>S</option><option selected>M</option>
+            <option>L</option><option>XL</option><option>XXL</option>
         </select>
-        <input type="text" id="qty" placeholder="Quantity" value="1">
-        <input type="submit" id="submitBtn" value="Generate">
+        <input type="text" name="qty" placeholder="Quantity" value="1">
+        <input type="submit" value="Generate" id="btn">
     </form>
-    
     <div class="loader" id="loader"></div>
-    <p class="error-msg" id="errorMsg">Generation failed. Please try again.</p>
-
-    <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
-        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    {% if img_b64 %}
+    <div class="result">
+        <img src="data:image/png;base64,{{ img_b64 }}">
+        <button class="produce" onclick="window.open('{{ wa_link }}')">Produce in China — $32–48</button>
     </div>
-
+    {% endif %}
     <script>
-        const FACTORY_WHATSAPP = "8613980632981"; 
-        const YOUR_REFERRAL_CODE = "REF_GROK2025";
-
-        document.getElementById('appForm').addEventListener('submit', function(e) {
-            e.preventDefault(); 
-            
-            const promptVal = document.getElementById('prompt').value;
-            const sizeVal = document.getElementById('size').value;
-            const qtyVal = document.getElementById('qty').value;
-            
-            const imgElement = document.getElementById('resultImg');
-            const resultDiv = document.getElementById('resultBlock');
-            const loader = document.getElementById('loader');
-            const btn = document.getElementById('submitBtn');
-            const errorMsg = document.getElementById('errorMsg');
-
-            // Сброс UI
-            btn.value = "Dreaming...";
-            btn.disabled = true;
-            loader.style.display = "block";
-            resultDiv.style.display = "none";
-            errorMsg.style.display = "none";
-
-            // Генерация ссылки (Seed делает её уникальной)
-            const seed = Math.floor(Math.random() * 1000000);
-            const fullPrompt = encodeURIComponent(promptVal + ", fashion product photo, white background, studio lighting, 8k");
-            // Добавляем nologo=true
-            const imageUrl = "https://image.pollinations.ai/prompt/" + fullPrompt + "?model=flux&width=1024&height=1024&seed=" + seed + "&nologo=true";
-
-            // Устанавливаем источник картинки
-            imgElement.src = imageUrl;
-
-            // Если картинка загрузилась
-            imgElement.onload = function() {
-                loader.style.display = "none";
-                resultDiv.style.display = "block";
-                btn.value = "Generate";
-                btn.disabled = false;
-
-                // Ссылка WhatsApp с тем же URL картинки
-                const message = "Hello MMS Clothing!\\nFully custom clothing — cut & sew\\nReferral: " + YOUR_REFERRAL_CODE + " → 25% cashback\\nDesign:\\n" + imageUrl + "\\nDescription: " + promptVal + "\\nSize: " + sizeVal + " | Quantity: " + qtyVal + " pc(s)\\nPlease send quote + sample cost + lead time.\\nThank you!";
-
-                const waLink = "https://wa.me/" + FACTORY_WHATSAPP + "?text=" + encodeURIComponent(message);
-                
-                document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
-            };
-
-            // Если ошибка загрузки
-            imgElement.onerror = function() {
-                loader.style.display = "none";
-                errorMsg.style.display = "block";
-                btn.value = "Try Again";
-                btn.disabled = false;
-            };
-        });
+        document.getElementById('mainForm').onsubmit = function() {
+            document.getElementById('btn').disabled = true;
+            document.getElementById('btn').value = 'Dreaming... (30-60s)';
+            document.getElementById('loader').style.display = 'block';
+        };
     </script>
 </body>
 </html>
@@ -117,9 +124,28 @@ HTML_CODE = """
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    # Просто отдаем HTML. Python здесь "отдыхает".
-    return render_template_string(HTML_CODE)
+    img_b64 = None
+    wa_link = None
+    error = None
+    
+    if request.method == 'POST':
+        try:
+            prompt = request.form['prompt'].strip()
+            size = request.form.get('size', 'M')
+            qty = request.form.get('qty', '1')
+            
+            print(f"Generating: {prompt}")
+            img_b64 = generate_image(prompt)
+            img_url = upload_to_imgbb(img_b64)
+            wa_link = generate_whatsapp_link(prompt, img_url, size, qty)
+            print("Success!")
+            
+        except Exception as e:
+            error = f"Generation failed: {str(e)}. Try again or simplify description."
+            print(f"Error: {e}")
+    
+    return render_template_string(HTML, img_b64=img_b64, wa_link=wa_link, error=error)
 
 if __name__ == '__main__':
-    # Порт для локального запуска, на Render он игнорируется (используется gunicorn)
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False)
