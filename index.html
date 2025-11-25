@@ -5,18 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>No One Else Has This</title>
     <style>
-        /* Стиль сохранен полностью без изменений */
         body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
-        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;}
+        input[type=submit] {padding:18px 60px;font-size:1.6em;background:#ff00aa;border:none;border-radius:50px;cursor:pointer;color:white;font-weight:bold;}
         .result {margin:60px auto;max-width:600px; display: none;} 
         img {width:100%;border-radius:20px;margin:20px 0;box-shadow:0 0 40px #ff00aa88;}
         button {margin:15px 0;padding:16px;width:100%;font-size:1.3em;border:none;border-radius:40px;cursor:pointer;}
         .produce {background:#25d366;color:white;font-weight:bold;}
         
-        /* Добавил спиннер загрузки, чтобы было видно процесс */
-        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto;}
+        /* Лоадер */
+        .loader {display:none; border: 5px solid #333; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
         @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
     </style>
 </head>
@@ -42,20 +41,20 @@
     <div class="loader" id="loader"></div>
 
     <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image">
+        <img id="resultImg" src="" alt="Generated Image" referrerpolicy="no-referrer">
         <button class="produce" id="waButton"> Produce in China — $32–48 </button>
     </div>
 
     <script>
-        // Константы
         const FACTORY_WHATSAPP = "8613980632981"; 
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
+        
+        // Ключ ImgBB
         const IMGBB_KEY = "10b08c5be2b4f6c9a2f1d2e8f7c3e4a5";
 
-        document.getElementById('appForm').addEventListener('submit', async function(e) {
+        document.getElementById('appForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
             
-            // Элементы интерфейса
             const promptVal = document.getElementById('prompt').value;
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
@@ -64,37 +63,40 @@
             const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
 
-            // 1. Показываем загрузку
-            btn.value = "Generating...";
+            // UI Loading state
+            btn.value = "Dreaming...";
             btn.disabled = true;
             loader.style.display = "block";
             resultDiv.style.display = "none";
 
-            // 2. Формируем ссылку на генерацию (Pollinations)
-            const fullPrompt = `${promptVal}, fashion product photo, white background, studio lighting, ultra detailed, 8k`;
-            // encodeURIComponent - это аналог urllib.parse.quote в JS
-            const pollUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fullPrompt)}?model=flux&width=1024&height=1024&nologo=true`;
+            // Генерация ссылки Pollinations
+            // Добавляем seed, чтобы избежать кеширования и ошибок "старой" картинки
+            const seed = Math.floor(Math.random() * 1000000);
+            const cleanPrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting, 8k`);
+            const pollUrl = `https://image.pollinations.ai/prompt/${cleanPrompt}?model=flux&width=1024&height=1024&seed=${seed}`;
 
-            // 3. Сразу ставим картинку в тег IMG (это работает всегда)
-            // Добавляем случайное число, чтобы браузер не кешировал старые запросы
-            const cacheBuster = `&t=${new Date().getTime()}`;
-            imgElement.src = pollUrl + cacheBuster;
+            console.log("Loading URL:", pollUrl); // Для отладки
 
-            // Ждем пока картинка прогрузится визуально
+            // Устанавливаем ссылку на картинку
+            imgElement.src = pollUrl;
+
+            // Если картинка загрузилась успешно
             imgElement.onload = async function() {
                 loader.style.display = "none";
                 resultDiv.style.display = "block";
                 btn.value = "Generate";
                 btn.disabled = false;
 
-                // 4. Пытаемся получить "вечную" ссылку через ImgBB
-                // ВАЖНО: Мы отправляем URL, а не файл, чтобы обойти CORS
-                let finalLink = pollUrl; // Если ImgBB не сработает, используем ссылку генератора
-                
+                // Сначала готовим финальную ссылку как ссылку генератора (резервный вариант)
+                let finalLink = pollUrl;
+
+                // Пытаемся загрузить на ImgBB (в фоне)
+                // Если не выйдет - используем ссылку pollUrl, она тоже работает
                 try {
                     const formData = new FormData();
-                    formData.append("image", pollUrl); // Отправляем ССЫЛКУ, сервер ImgBB сам скачает
+                    formData.append("image", pollUrl);
                     
+                    // fetch запрос к ImgBB
                     const upload = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
                         method: 'POST',
                         body: formData
@@ -105,10 +107,10 @@
                         finalLink = response.data.url;
                     }
                 } catch (err) {
-                    console.log("ImgBB fail, using direct link");
+                    console.log("ImgBB fail, keeping original link");
                 }
 
-                // 5. Обновляем кнопку WhatsApp
+                // Формируем ссылку WhatsApp
                 const message = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
@@ -121,15 +123,16 @@ Thank you!`;
 
                 const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
                 
+                // Вешаем на кнопку
                 document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
             };
 
-            // Обработка ошибки, если сама генерация упала
+            // Если картинка НЕ загрузилась (ошибка генерации)
             imgElement.onerror = function() {
                 loader.style.display = "none";
                 btn.value = "Try Again";
                 btn.disabled = false;
-                alert("Generation failed. Please try a different prompt.");
+                alert("Generation failed. Server busy, please click Generate again.");
             };
         });
     </script>
