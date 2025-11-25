@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>No One Else Has This</title>
     <style>
-        /* --- СТИЛИ БЕЗ ИЗМЕНЕНИЙ --- */
+        /* Стили оставлены для красоты */
         body {font-family:Arial;background:#000;color:#fff;text-align:center;padding:30px;}
         h1 {font-size:2.8em;background:linear-gradient(90deg,#ff00aa,#00ffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
         input[type=text],select {width:90%;max-width:600px;padding:18px;margin:10px;font-size:1.4em;border:3px solid #ff00aa;border-radius:15px;background:#111;color:white;}
@@ -19,17 +19,10 @@
         .produce {background:#25d366;color:white;font-weight:bold; transition: 0.3s;}
         .produce:hover {box-shadow: 0 0 20px #25d366;}
         
-        /* Лоадер */
-        .loader {display:none; border: 5px solid #222; border-top: 5px solid #ff00aa; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin: 30px auto;}
-        @keyframes spin {0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); }}
-        
-        /* Блок информации/ошибки */
+        /* Стили для лоадера и информации */
         .info-container {display: none; background: #333; border: 2px solid #555; padding: 15px; border-radius: 10px; margin: 20px auto; max-width: 600px;}
-        .info-container.error {background: #3a0000; border-color: #ff0000;}
-        .info-container.warning {background: #aa6600; border-color: #ffcc00;}
+        .info-container.success {background: #004400; border-color: #00ff00;}
         .info-msg {color: #ccc; margin: 0; font-weight: bold;}
-        .info-container.error .info-msg {color: #ff5555;}
-        .info-container.warning .info-msg {color: #ffddaa;}
     </style>
 </head>
 <body>
@@ -48,139 +41,65 @@
             <option>XXL</option>
         </select>
         <input type="text" id="qty" placeholder="Quantity" value="1">
-        <input type="submit" id="submitBtn" value="Generate">
+        <input type="submit" id="submitBtn" value="Generate Image">
     </form>
     
-    <div class="loader" id="loader"></div>
-
     <div class="info-container" id="infoBlock">
-        <p class="info-msg" id="infoMessage"></p>
+        <p class="info-msg" id="infoMessage">✨ Your image is being generated in a **new tab**. When ready, **save it** and come back to order!</p>
     </div>
 
     <div class="result" id="resultBlock">
-        <img id="resultImg" src="" alt="Generated Image">
-        <button class="produce" id="waButton"> Produce in China — $32–48 </button>
+        <img id="resultImg" src="" alt="Generated Image" style="display:none;"> 
+        <button class="produce" id="waButton"> Produce in China — $32–48 (Open WhatsApp) </button>
     </div>
 
     <script>
         const FACTORY_WHATSAPP = "8613980632981"; 
         const YOUR_REFERRAL_CODE = "REF_GROK2025";
-        // Заглушка, если API временно недоступен (чтобы не было пустой картинки)
-        const FALLBACK_IMAGE_PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1024' height='1024' viewBox='0 0 1024 1024'%3E%3Crect width='100%25' height='100%25' fill='%23333'/%3E%3Ctext x='50%25' y='50%25' font-family='Arial' font-size='60' fill='%23ccc' text-anchor='middle' alignment-baseline='middle'%3EImage Unavailable%3C/text%3E%3C/svg%3E";
-
-        let currentGenerationPrompt = ""; // Для повторных попыток
 
         document.getElementById('appForm').addEventListener('submit', function(e) {
             e.preventDefault(); 
             
-            currentGenerationPrompt = document.getElementById('prompt').value; // Сохраняем запрос
+            const promptVal = document.getElementById('prompt').value;
             const sizeVal = document.getElementById('size').value;
             const qtyVal = document.getElementById('qty').value;
             
-            const imgElement = document.getElementById('resultImg');
-            const resultDiv = document.getElementById('resultBlock');
-            const loader = document.getElementById('loader');
             const btn = document.getElementById('submitBtn');
             const infoBlock = document.getElementById('infoBlock');
-            const infoMessage = document.getElementById('infoMessage');
-
-            // Сброс интерфейса в состояние "Загрузка"
-            btn.value = "Dreaming...";
-            btn.disabled = true;
-            loader.style.display = "block";
-            resultDiv.style.display = "none";
-            infoBlock.style.display = "none";
-            infoBlock.classList.remove('error', 'warning'); // Сброс классов цвета
-            imgElement.src = ""; // Очищаем картинку для новой генерации
-
-            generateImage(currentGenerationPrompt, sizeVal, qtyVal, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, 0); // Начинаем попытки генерации
-        });
-
-        // Функция для попыток генерации
-        function generateImage(prompt, size, qty, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, attempt) {
-            const MAX_ATTEMPTS = 2; // Максимум попыток генерации
-            const RETRY_DELAY_MS = 5000; // Задержка между попытками
-
-            // Генерация уникального ключа (seed) для каждой попытки
+            const resultDiv = document.getElementById('resultBlock');
+            
+            // 1. Формирование ссылки Pollinations
             const seed = Math.floor(Math.random() * 2000000);
+            const basePrompt = encodeURIComponent(`${promptVal}, fashion product photo, white background, studio lighting`);
             
-            // Упрощенный запрос для стабильности
-            const basePrompt = encodeURIComponent(`${prompt}, fashion product photo, white background, studio lighting`); // Убрал "ultra detailed, 8k"
+            // ИСПОЛЬЗУЕМ СТРАНИЦУ ГЕНЕРАЦИИ, КОТОРАЯ ГАРАНТИРОВАННО РАБОТАЕТ НА ИХ СЕРВЕРЕ
+            const generationUrl = `https://pollinations.ai/p/${basePrompt}?width=1024&height=1024&model=flux&seed=${seed}`;
+
+            // 2. Открытие нового окна
+            window.open(generationUrl, '_blank');
+
+            // 3. Обновление интерфейса на вашем сайте
+            infoBlock.style.display = "block";
+            infoBlock.classList.add('success');
+            resultDiv.style.display = "block"; // Показываем кнопку заказа
             
-            const imageUrl = `https://pollinations.ai/p/${basePrompt}?width=1024&height=1024&model=flux&nologo=true&seed=${seed}`;
-
-            console.log(`Attempt ${attempt + 1}: Loading image from ${imageUrl}`);
-
-            let generationTimeout; // Переменная для таймаута
-
-            // Устанавливаем обработчики
-            imgElement.onload = function() {
-                clearTimeout(generationTimeout); // Отменяем таймаут, если загрузка успешна
-                loader.style.display = "none";
-                resultDiv.style.display = "block";
-                btn.value = "Generate";
-                btn.disabled = false;
-                
-                // Обновляем ссылку WhatsApp
-                updateWhatsappLink(prompt, size, qty, imageUrl);
-            };
-
-            imgElement.onerror = function() {
-                clearTimeout(generationTimeout); // Отменяем таймаут
-                console.error(`Attempt ${attempt + 1}: Image failed to load.`);
-                
-                if (attempt < MAX_ATTEMPTS - 1) {
-                    // Если есть еще попытки, пробуем снова
-                    infoBlock.style.display = "block";
-                    infoBlock.classList.add('warning');
-                    infoMessage.textContent = `Image generation failed. Retrying in ${RETRY_DELAY_MS / 1000} seconds... (Attempt ${attempt + 1}/${MAX_ATTEMPTS})`;
-                    
-                    loader.style.display = "block"; // Держим лоадер
-                    btn.value = "Retrying...";
-                    btn.disabled = true;
-
-                    setTimeout(() => {
-                        generateImage(prompt, size, qty, imgElement, resultDiv, loader, btn, infoBlock, infoMessage, attempt + 1);
-                    }, RETRY_DELAY_MS);
-                } else {
-                    // Если попытки закончились
-                    loader.style.display = "none";
-                    infoBlock.style.display = "block";
-                    infoBlock.classList.add('error');
-                    infoMessage.textContent = "⚠️ All image generation attempts failed. The API might be overloaded. You can still order by describing your design in WhatsApp!";
-                    btn.value = "Try Again";
-                    btn.disabled = false;
-                    imgElement.src = FALLBACK_IMAGE_PLACEHOLDER; // Показываем заглушку
-                    resultDiv.style.display = "block"; // Показываем блок с кнопкой Produce
-                    // Обновляем ссылку WhatsApp (только с описанием)
-                    updateWhatsappLink(prompt, size, qty, `Description: ${prompt}`);
-                }
-            };
-
-            // Запускаем таймер, если картинка не загрузится
-            generationTimeout = setTimeout(() => {
-                console.warn(`Attempt ${attempt + 1}: Image generation timed out.`);
-                imgElement.onerror(); // Вызываем обработчик ошибки вручную
-            }, 35000); // 35 секунд на генерацию
-
-            imgElement.src = imageUrl; // Запускаем загрузку
-        }
-
-        // Обновление ссылки WhatsApp
-        function updateWhatsappLink(prompt, size, qty, imageUrlOrDescription) {
-            const message = `Hello MMS Clothing!
+            // 4. Обновление WhatsApp-ссылки
+            // Мы просим пользователя СКОПИРОВАТЬ ИЗОБРАЖЕНИЕ ИЗ НОВОЙ ВКЛАДКИ
+            const whatsappPrompt = `Hello MMS Clothing!
 Fully custom clothing — cut & sew
 Referral: ${YOUR_REFERRAL_CODE} → 25% cashback
-Design:
-${imageUrlOrDescription}
-Description: ${prompt}
-Size: ${size} | Quantity: ${qty} pc(s)
+
+**[USER MUST ATTACH IMAGE SAVED FROM THE NEW TAB]**
+
+Description: ${promptVal}
+Size: ${sizeVal} | Quantity: ${qtyVal} pc(s)
+Generated Link (for reference): ${generationUrl}
 Please send quote + sample cost + lead time.
 Thank you!`;
 
-            const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(message)}`;
+            const waLink = `https://wa.me/${FACTORY_WHATSAPP}?text=${encodeURIComponent(whatsappPrompt)}`;
             document.getElementById('waButton').onclick = () => window.open(waLink, '_blank');
-        }
+        });
     </script>
 </body>
 </html>
